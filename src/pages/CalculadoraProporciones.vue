@@ -42,6 +42,7 @@ import { useRoute } from "vue-router";
 import { useQuasar } from "quasar";
 import TablaDeIngredientes from "src/components/TablaDeIngredientes.vue";
 import { ref, onMounted } from "vue";
+import { API_URL } from 'src/config/api';
 
 const route = useRoute();
 const $q = useQuasar();
@@ -62,8 +63,7 @@ const proporcion = ref({ nombreReceta: "", ingredientes: [], descripcion: "" });
 const cargarReceta = async () => {
   try {
     const response = await fetch(
-      //`http://localhost:3000/recetas/?nombreReceta=${key}`
-      `https://calcuback.onrender.com/recetas/?nombreReceta=${key}`
+      `${API_URL}/recetas/?nombreReceta=${key}`
     );
     const data = await response.json();
     recetaOriginal.value = data;
@@ -104,7 +104,7 @@ const guardarProporcion = async () => {
 
   try {
     //await fetch(`http://localhost:3000/recetas`, {
-    await fetch(`https://calcuback.onrender.com/recetas`, {
+    await fetch(`${API_URL}/recetas`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

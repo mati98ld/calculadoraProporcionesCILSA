@@ -352,6 +352,7 @@ import { useQuasar } from "quasar";
 import TablaDeIngredientes from "src/components/TablaDeIngredientes.vue";
 import { ref } from "vue";
 import { onMounted } from "vue";
+import { API_URL } from 'src/config/api';
 
 const $q = useQuasar();
 const mostrar = ref(false);
@@ -369,8 +370,7 @@ const titulo = ref("Todas las recetas");
 // obtener todas las recetas guardadas (se cambio de localStorage a peticion a la API)
 
 const fetchRecetas = async () => {
-  //await fetch("http://localhost:3000/recetas/todas")
-  await fetch("https://calcuback.onrender.com/recetas/todas")
+  await fetch(`${API_URL}/recetas/todas`)
     .then((response) => response.json())
     .then((data) => (keys.value = data))
     .catch((error) => console.error("Error:", error));
@@ -406,8 +406,7 @@ const estaOrdenadoAlfabeticamente = (array) => {
 
 // obtener receta seleccionada para mostrarla (se cambio de localStorage a peticion a la API)
 const obtenerReceta = async (key) => {
-  // await fetch("http://localhost:3000/recetas/?nombreReceta=" + key)
-  await fetch("https://calcuback.onrender.com/recetas/?nombreReceta=" + key)
+  await fetch(`${API_URL}/recetas/?nombreReceta=` + key)
     .then((response) => response.json())
     .then((data) => {
       $receta.value = data;
@@ -430,8 +429,7 @@ const eliminarReceta = (key) => {
     cancel: true,
     persistent: true,
   }).onOk(async () => {
-    // await fetch("http://localhost:3000/recetas/?nombreReceta=" + key, {
-    await fetch("https://calcuback.onrender.com/recetas/?nombreReceta=" + key, {
+    await fetch(`${API_URL}/recetas/?nombreReceta=` + key, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -453,9 +451,8 @@ const eliminarReceta = (key) => {
 
 const favorita = async (receta) => {
   let index = keys.value.findIndex((r) => r.nombreReceta === receta);
-  // await fetch("http://localhost:3000/recetas/fav/?nombreReceta=" + receta, {
   await fetch(
-    "https://calcuback.onrender.com/recetas/fav/?nombreReceta=" + receta,
+    `${API_URL}/recetas/fav/?nombreReceta=` + receta,
     {
       method: "PATCH",
       headers: {
@@ -515,9 +512,7 @@ const guardarEdit = async () => {
     };
 
     await fetch(
-      //"http://localhost:3000/recetas/?nombreReceta=" +
-      "https://calcuback.onrender.com/recetas/?nombreReceta=" +
-        $receta.value.nombreReceta,
+      `${API_URL}/recetas/?nombreReceta=` + $receta.value.nombreReceta,
       {
         method: "PATCH",
         headers: {

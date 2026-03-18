@@ -95,6 +95,7 @@ import TablaDeIngredientes from "src/components/TablaDeIngredientes.vue";
 import { ref } from "vue";
 import { useQuasar } from "quasar";
 import { useRoute, useRouter } from "vue-router";
+import { API_URL } from 'src/config/api';
 
 const $q = useQuasar();
 const ingrediente = ref(null);
@@ -134,12 +135,10 @@ const goToMisRecetas = () => {
   router.push("/misrecetas");
 };
 
-// chequea si ya existe la receta (Se cambio de localStorage a petición a la API)
 const existeLaReceta = async () => {
   try {
     const response = await fetch(
-      //"http://localhost:3000/recetas/?nombreReceta=" + recetaName.value
-      "https://calcuback.onrender.com/recetas/?nombreReceta=" + recetaName.value
+      `${API_URL}/recetas/?nombreReceta=` + recetaName.value
     );
     const data = await response.json();
     return data.nombreReceta === recetaName.value;
@@ -167,9 +166,7 @@ const crearReceta = async () => {
       descripcion: descripcion.value,
     };
     try {
-      // guardar receta (se cambio de localStorage a petición a la API)
-      // fetch("http://localhost:3000/recetas", {
-      fetch("https://calcuback.onrender.com/recetas", {
+      fetch(`${API_URL}/recetas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

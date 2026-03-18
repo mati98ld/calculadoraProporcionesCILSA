@@ -115,6 +115,20 @@ const unidad = ref();
 const cantidad = ref();
 const ingrediente = ref();
 
+const formatCantidadDisplay = (valor) => {
+  const numero = typeof valor === "number" ? valor : parseFloat(valor);
+
+  if (Number.isNaN(numero)) {
+    return valor;
+  }
+
+  if (Math.abs(numero - 0.25) < 0.0000001) return "1/4";
+  if (Math.abs(numero - 0.5) < 0.0000001) return "1/2";
+  if (Math.abs(numero - 0.75) < 0.0000001) return "3/4";
+
+  return valor;
+};
+
 const columns = [
   {
     name: "ingrediente",
@@ -128,6 +142,7 @@ const columns = [
     label: "Cantidad",
     align: "right",
     field: "cantidad",
+    format: (val) => formatCantidadDisplay(val),
   },
   {
     name: "unidad",
