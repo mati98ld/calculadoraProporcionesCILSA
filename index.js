@@ -43,7 +43,7 @@ app.use(async (req, res, next) => {
 // ------------------------------------------
 
 // Configuración de rutas (Le agregamos un prefijo /api para ordenarlo mejor en Netlify)
-app.use("/api/recetas", recetasRouter);
+app.use("/api/recetas", recetasRouter.default || recetasRouter);
 
 // --- SE ELIMINA EL app.listen(PORT) ---
 
