@@ -101,6 +101,7 @@ const crearReceta = async () => {
       type: "warning",
       message: "La receta debe tener al menos un ingrediente",
     });
+    loading.value = false;
   } else if (await utils.existeLaReceta(recetaName.value)) {
     $q.notify({
       type: "negative",
