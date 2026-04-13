@@ -3,7 +3,7 @@
     <q-btn v-if="keys.length > 1" flat round color="primary" icon="sort_by_alpha" size="15px"
       class="absolute-top-left q-mt-lg q-ml-md" @click="ordenar()" />
     <q-btn-dropdown flat round color="primary" icon="filter_list" size="14px" class="absolute-top-right q-mt-lg q-mr-xs"
-      v-if="keys.length">
+      v-if="mounted">
       <q-list separator class="shadow-3">
         <q-item clickable v-close-popup @click="todas()" class="bg-primary text-center">
           <q-item-section>
@@ -27,7 +27,7 @@
         </q-item>
       </q-list>
     </q-btn-dropdown>
-    <div class="row justify-center" v-if="keys.length">
+    <div class="row justify-center" v-if="mounted">
       <q-input rounded outlined v-model="text" clearable placeholder="Buscar receta" class="q-mt-md q-mb-md"
         @update:model-value="search">
         <template v-slot:prepend></template>
@@ -159,12 +159,17 @@ const keys = ref([]);
 const fabAbierto = ref(null);
 const router = useRouter();
 
+const mounted = ref(false);
+
 const fetchRecetas = async () => {
+  loading.value = true;
   await fetch(`${API_URL}/recetas/todas`)
     .then((response) => response.json())
     .then((data) => (
       recetasCache.value = data,
-      keys.value = data
+      keys.value = data,
+      loading.value = false,
+      mounted.value = true
     ))
     .catch((error) => console.error("Error:", error));
   // ordenar();
@@ -318,6 +323,7 @@ onMounted(async () => {
   loading.value = true;
   await fetchRecetas().then(() => {
     loading.value = false;
+    mounted.value = true;
   });
 });
 </script>
