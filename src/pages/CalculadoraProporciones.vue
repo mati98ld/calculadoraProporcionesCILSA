@@ -5,34 +5,22 @@
         {{ proporcion.nombreReceta }}
       </div>
     </div>
-    <div class="q-ml-xl q-mr-xl">
-      <TablaDeIngredientes
-        :ingredientes="proporcion.ingredientes"
-      ></TablaDeIngredientes>
+    <div class="q-mx-xs">
+      <TablaDeIngredientes :ingredientes="proporcion.ingredientes" :maxHeight="'1000px'"></TablaDeIngredientes>
     </div>
-    <div
-      class="text-purple row justify-around text-bold text-h6 q-pa-xs q-mt-md"
-    >
+    <div class="text-purple row justify-around text-bold text-h6 q-pa-xs q-mt-md">
       Descripción:
     </div>
     <div class="row justify-around">
-      <div
-        style="max-height: 300px; border: solid; border-color: purple"
-        class="scroll text-black text-body1 q-pa-md text-justify"
-      >
-        <pre wrap class="q-ma-none"
-          >{{ recetaOriginal.descripcion }}
+      <div style="max-height: 400px; min-width: 100%; border: solid; border-color: purple"
+        class="scroll text-black text-body1 q-pa-md text-justify">
+        <pre wrap class="q-ma-none">{{ recetaOriginal.descripcion }}
         </pre>
       </div>
     </div>
     <div class="row justify-center">
-      <q-btn
-        :disabled="seGuardo"
-        label="Guardar proporcion"
-        color="primary"
-        class="q-ma-md col-6"
-        @click="guardarProporcion"
-      ></q-btn>
+      <q-btn :disabled="seGuardo" label="Guardar proporcion" color="primary" class="q-ma-md col-6"
+        @click="guardarProporcion"></q-btn>
     </div>
   </q-page>
 </template>

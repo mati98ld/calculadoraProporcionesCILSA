@@ -11,6 +11,7 @@ const routes = [
         path: "/calcu",
         component: () => import("pages/CalculadoraProporciones.vue"),
       },
+      { path: "/receta", component: () => import("pages/VerReceta.vue") },
     ],
   },
 

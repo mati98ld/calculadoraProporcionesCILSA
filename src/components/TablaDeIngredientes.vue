@@ -1,51 +1,18 @@
 <template>
-  <q-table
-    style="max-height: 300px"
-    no-data-label="No hay ingredientes añadidos"
-    :columns="columns"
-    :rows="ingredientes"
-    class="bg-secondary my-sticky-virtscroll-table"
-    :hide-bottom="!(ingredientes[0] == null)"
-    :selection="seleccion"
-    exact
-    v-model:selected="selected"
-    row-key="ingrediente"
-    virtual-scroll
-    :pagination="pagination"
-    :rows-per-page-options="[0]"
-  >
+  <q-table :style="{ maxHeight: maxHeight || '300px' }" no-data-label="No hay ingredientes añadidos" :columns="columns"
+    :rows="ingredientes" class="bg-secondary my-sticky-virtscroll-table" :hide-bottom="!(ingredientes[0] == null)"
+    :selection="seleccion" exact v-model:selected="selected" row-key="ingrediente" virtual-scroll
+    :pagination="pagination" :rows-per-page-options="[0]">
   </q-table>
   <div v-show="editable" class="row justify-end q-mt-sm">
-    <q-btn
-      v-show="seleccion == 'single'"
-      color="purple"
-      outline
-      @click="cancelar"
-      class="q-pa-sm q-mr-sm"
-      >cancelar</q-btn
-    >
-    <q-btn
-      v-if="addIng && seleccion == 'none'"
-      icon="add"
-      round
-      color="primary"
-      class="q-mr-xl"
-      @click="agregarIng = true"
-      :disable="seleccion == 'single'"
-    ></q-btn>
-    <q-btn
-      v-if="!(ingredientes[0] == null) && selected[0] == null"
-      label="Eliminar un ingrediente"
-      color="primary"
-      @click="seccionEliminar"
-      :disable="seleccion == 'single'"
-    ></q-btn>
-    <q-btn
-      v-else-if="!(ingredientes[0] == null)"
-      label="Eliminar"
-      color="primary"
-      @click="eliminarIngrediente(ingredientes)"
-    ></q-btn>
+    <q-btn v-show="seleccion == 'single'" color="purple" outline @click="cancelar"
+      class="q-pa-sm q-mr-sm">cancelar</q-btn>
+    <q-btn v-if="addIng && seleccion == 'none'" icon="add" round color="primary" class="q-mr-xl"
+      @click="agregarIng = true" :disable="seleccion == 'single'"></q-btn>
+    <q-btn v-if="!(ingredientes[0] == null) && selected[0] == null" label="Eliminar un ingrediente" color="primary"
+      @click="seccionEliminar" :disable="seleccion == 'single'"></q-btn>
+    <q-btn v-else-if="!(ingredientes[0] == null)" label="Eliminar" color="primary"
+      @click="eliminarIngrediente(ingredientes)"></q-btn>
   </div>
 
   <q-dialog v-model="agregarIng" @hide="reset()">
@@ -59,45 +26,19 @@
       </q-card-section>
       <q-card-section>
         <q-form @submit.prevent="agregar(ingredientes)">
-          <q-input
-            class="q-pa-none bg-secondary q-mb-md"
-            outlined
-            type="text"
-            label="Ingrediente"
-            v-model="ingrediente"
-            lazy-rules
-            :rules="[
+          <q-input class="q-pa-none bg-secondary q-mb-md" outlined type="text" label="Ingrediente" v-model="ingrediente"
+            lazy-rules :rules="[
               (val) => (val && val.length > 0) || 'Este campo está vacío',
-            ]"
-          ></q-input>
-          <q-input
-            class="q-pa-none bg-secondary q-mb-md"
-            outlined
-            type="text"
-            label="Cantidad"
-            v-model="cantidad"
-            lazy-rules
-            :rules="[
+            ]"></q-input>
+          <q-input class="q-pa-none bg-secondary q-mb-md" outlined type="text" label="Cantidad" v-model="cantidad"
+            lazy-rules :rules="[
               (val) =>
                 (val && !isNaN(val)) || 'Por favor, ingresa un número válido',
               (val) => (val && val.length > 0) || 'Este campo está vacío',
-            ]"
-          ></q-input>
-          <q-select
-            class="q-pa-none bg-secondary q-mb-md"
-            outlined
-            clearable
-            label="Unidad"
-            v-model="unidad"
-            :options="opciones"
-          ></q-select>
-          <q-btn
-            label="Agregar"
-            text-color="purple"
-            color="secondary"
-            style="width: 100%"
-            type="submit"
-          />
+            ]"></q-input>
+          <q-select class="q-pa-none bg-secondary q-mb-md" outlined clearable label="Unidad" v-model="unidad"
+            :options="opciones"></q-select>
+          <q-btn label="Agregar" text-color="purple" color="secondary" style="width: 100%" type="submit" />
         </q-form>
       </q-card-section>
     </q-card>
@@ -226,6 +167,7 @@ export default {
     ingredientes: Array,
     editable: Boolean,
     addIng: Boolean,
+    maxHeight: String,
   },
 };
 </script>

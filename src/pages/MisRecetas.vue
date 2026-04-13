@@ -1,76 +1,44 @@
 <template>
   <q-page padding class="bg-secondary column">
-    <q-btn
-      v-if="keys.length > 1"
-      flat
-      round
-      color="primary"
-      icon="sort_by_alpha"
-      size="15px"
-      class="absolute-top-left q-mt-lg q-ml-md"
-      @click="ordenar()"
-    />
-    <q-btn-dropdown
-      flat
-      round
-      color="primary"
-      icon="filter_list"
-      size="15px"
-      class="absolute-top-right q-mt-lg q-mr-xs"
-    >
+    <q-btn v-if="keys.length > 1" flat round color="primary" icon="sort_by_alpha" size="15px"
+      class="absolute-top-left q-mt-lg q-ml-md" @click="ordenar()" />
+    <q-btn-dropdown flat round color="primary" icon="filter_list" size="14px" class="absolute-top-right q-mt-lg q-mr-xs"
+      v-if="keys.length">
       <q-list separator class="shadow-3">
-        <q-item
-          clickable
-          v-close-popup
-          @click="todas()"
-          class="bg-primary text-center"
-        >
+        <q-item clickable v-close-popup @click="todas()" class="bg-primary text-center">
           <q-item-section>
-            <q-item-label class="text-blue-grey-1 text-subtitle1"
-              >Todas</q-item-label
-            >
+            <q-item-label class="text-blue-grey-1 text-subtitle1">Todas</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item
-          clickable
-          v-close-popup
-          @click="favoritos()"
-          class="bg-primary text-center"
-        >
+        <q-item clickable v-close-popup @click="favoritos()" class="bg-primary text-center">
           <q-item-section>
-            <q-item-label class="text-blue-grey-1 text-subtitle1"
-              >Favoritas</q-item-label
-            >
+            <q-item-label class="text-blue-grey-1 text-subtitle1">Favoritas</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item
-          clickable
-          v-close-popup
-          @click="originales()"
-          class="bg-primary text-center"
-        >
+        <q-item clickable v-close-popup @click="originales()" class="bg-primary text-center">
           <q-item-section>
-            <q-item-label class="text-blue-grey-1 text-subtitle1"
-              >Originales</q-item-label
-            >
+            <q-item-label class="text-blue-grey-1 text-subtitle1">Originales</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item
-          clickable
-          v-close-popup
-          @click="proporciones()"
-          class="bg-primary text-center"
-        >
+        <q-item clickable v-close-popup @click="proporciones()" class="bg-primary text-center">
           <q-item-section>
-            <q-item-label class="text-blue-grey-1 text-subtitle1"
-              >Proporciones</q-item-label
-            >
+            <q-item-label class="text-blue-grey-1 text-subtitle1">Proporciones</q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
     </q-btn-dropdown>
-    <div class="row justify-center">
-      <h5 class="text-bold text-purple q-ma-md">{{ titulo }}</h5>
+    <div class="row justify-center" v-if="keys.length">
+      <q-input rounded outlined v-model="text" clearable placeholder="Buscar receta" class="q-mt-md q-mb-md"
+        @update:model-value="search">
+        <template v-slot:prepend></template>
+        <template v-slot:append>
+          <q-icon name="search" />
+        </template>
+      </q-input>
+    </div>
+    <q-separator v-if="keys.length" class="q-mt-xs"></q-separator>
+    <div v-if="!loading" class="row justify-center">
+      <h6 class="text-bold text-purple q-ma-md text-center">{{ titulo }}</h6>
     </div>
     <q-separator v-if="keys.length" class="q-mt-xs"></q-separator>
     <div v-if="loading" class="absolute-center">
@@ -80,18 +48,11 @@
       <q-list separator>
         <q-item v-for="receta in keys" :key="receta" class="q-pl-xs q-pr-xs">
           <q-item-section side>
-            <q-checkbox
-              size="lg"
-              v-model="
-                keys[
-                  keys.findIndex((r) => r.nombreReceta === receta.nombreReceta)
-                ].favorita
-              "
-              checked-icon="star"
-              unchecked-icon="star_border"
-              indeterminate-icon="help"
-              @click="favorita(receta.nombreReceta)"
-            />
+            <q-checkbox size="lg" v-model="keys[
+              keys.findIndex((r) => r.nombreReceta === receta.nombreReceta)
+            ].favorita
+              " checked-icon="star" unchecked-icon="star_border" indeterminate-icon="help"
+              @click="favorita(receta.nombreReceta)" />
           </q-item-section>
           <q-item-section>
             <h6 class="text-bold text-purple q-ma-xs">
@@ -100,64 +61,29 @@
           </q-item-section>
 
           <q-item-section avatar>
-            <q-fab
-              color="primary"
-              icon="keyboard_arrow_left"
-              push
-              round
-              dense
-              direction="left"
-              padding="sm"
-            >
-              <q-fab-action
-                v-if="!receta.esProporcion"
-                push
-                color="primary"
-                round
-                icon="calculate"
-                dense
-                @click.stop="
-                  async () => {
-                    await obtenerReceta(receta.nombreReceta);
-                    propor = true;
-                  }
-                "
-              />
-              <q-fab-action
-                push
-                color="primary"
-                round
-                icon="visibility"
-                dense
-                @click.stop="
-                  async () => {
-                    await obtenerReceta(receta.nombreReceta);
-                    mostrar = true;
-                  }
-                "
-              />
-              <q-fab-action
-                v-if="!receta.esProporcion"
-                push
-                color="primary"
-                round
-                icon="edit"
-                dense
-                @click.stop="
-                  async () => {
-                    await obtenerReceta(receta.nombreReceta);
-                    editar = true;
-                  }
-                "
-              />
-              <q-fab-action
-                push
-                color="primary"
-                round
-                icon="delete"
-                dense
-                @click.stop="eliminarReceta(receta.nombreReceta)"
-              />
+            <q-fab :model-value="fabAbierto === receta.nombreReceta" @update:model-value="(abierto) => {
+              fabAbierto = abierto ? receta.nombreReceta : null;
+            }" color="primary" icon="keyboard_arrow_left" push round dense direction="left" padding="xs">
+              <q-fab-action v-if="!receta.esProporcion" push color="primary" round icon="calculate" dense @click.stop="
+                async () => {
+                  await obtenerReceta(receta.nombreReceta);
+                  propor = true;
+                }
+              " />
+              <q-fab-action push color="primary" round icon="visibility" dense @click.stop="
+                async () => {
+                  await obtenerReceta(receta.nombreReceta);
+                  mostrar = true;
+                }
+              " />
+              <q-fab-action v-if="!receta.esProporcion" push color="primary" round icon="edit" dense @click.stop="
+                async () => {
+                  await obtenerReceta(receta.nombreReceta);
+                  editar = true;
+                }
+              " />
+              <q-fab-action push color="primary" round icon="delete" dense
+                @click.stop="eliminarReceta(receta.nombreReceta)" />
             </q-fab>
           </q-item-section>
         </q-item>
@@ -165,182 +91,44 @@
       <q-dialog v-model="mostrar">
         <q-card class="bg-primary">
           <q-card-section class="q-pl-sm q-pr-sm q-pb-sm">
-            <q-btn
-              icon="close"
-              flat
-              round
-              dense
-              v-close-popup
-              padding="none"
-              class="float-right"
-            />
+            <q-btn icon="close" flat round dense v-close-popup padding="none" class="float-right" />
             <div class="text-h5 text-secondary text-bold text-center">
               {{ $receta.nombreReceta }}
             </div>
           </q-card-section>
           <q-card-section class="q-pt-none">
-            <TablaDeIngredientes
-              :ingredientes="$receta.ingredientes"
-            ></TablaDeIngredientes>
+            <TablaDeIngredientes :ingredientes="$receta.ingredientes"></TablaDeIngredientes>
           </q-card-section>
-          <div
-            class="bg-secondary q-pa-xs q-ml-md q-mr-md"
-            style="border-radius: 10px"
-          >
+          <div class="bg-secondary q-pa-xs q-ml-md q-mr-md" style="border-radius: 10px">
             <div class="text-black row justify-around text-bold text-h6">
               Descripción:
             </div>
             <div class="row justify-around">
-              <q-card-section
-                style="max-height: 300px"
-                class="scroll text-black text-body1 text-center text-justify"
-              >
+              <q-card-section style="max-height: 300px" class="scroll text-black text-body1 text-center text-justify">
                 <pre wrap class="q-ma-none">{{ $receta.descripcion }} </pre>
               </q-card-section>
             </div>
           </div>
           <q-card-section class="text-center">
-            <q-btn
-              v-if="!$receta.esProporcion"
-              label="Calcular proporcion"
-              icon-right="calculate"
-              text-color="purple"
-              color="secondary"
-              style="width: 100%"
-              @click="propor = true"
-            />
+            <q-btn v-if="!$receta.esProporcion" label="Ir a la receta" icon-right="menu_book" text-color="purple"
+              color="secondary" style="width: 100%" @click="verReceta" />
+            <q-btn v-if="!$receta.esProporcion" label="Calcular proporcion" class="q-mt-md" icon-right="calculate"
+              text-color="purple" color="secondary" style="width: 100%" @click="propor = true" />
           </q-card-section>
         </q-card>
       </q-dialog>
-      <q-dialog v-model="propor">
-        <q-card class="bg-primary">
-          <q-card-section class="row q-pb-none">
-            <div class="text-h5 q-pl-md text-black text-bold">
-              En proporcion a..
-            </div>
-            <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
-          </q-card-section>
-          <q-card-section>
-            <q-form
-              @submit.prevent="
-                calcular($receta.nombreReceta, ingrediente, cantidad)
-              "
-            >
-              <q-select
-                class="q-pa-none bg-secondary q-mb-lg q-mt-xs"
-                outlined
-                clearable
-                label="Ingrediente"
-                v-model="ingrediente"
-                :options="opciones"
-                :rules="[
-                  (val) => (val && val.length > 0) || 'Este campo está vacío',
-                ]"
-              ></q-select>
-              <q-input
-                class="q-pa-none bg-secondary q-mb-lg q-mt-xs"
-                outlined
-                type="text"
-                label="Cantidad"
-                v-model="cantidad"
-                lazy-rules
-                :rules="[
-                  (val) =>
-                    (val && !isNaN(val)) ||
-                    'Por favor, ingresa un número válido',
-                  (val) => (val && val.length > 0) || 'Este campo está vacío',
-                ]"
-              ></q-input>
-              <q-btn
-                label="Calcular"
-                icon-right="calculate"
-                text-color="purple"
-                color="secondary"
-                style="width: 100%"
-                type="submit"
-                class="q-mt-xs"
-              />
-            </q-form>
-          </q-card-section>
-        </q-card>
-      </q-dialog>
-      <q-dialog v-model="editar">
-        <q-card class="bg-secondary">
-          <q-card-section class="row q-pb-none">
-            <div class="text-h6 text-black text-bold">Editar receta</div>
-            <q-space />
-            <q-btn icon="close" flat round dense v-close-popup />
-          </q-card-section>
-          <q-card-section>
-            <div class="row justify-around text-bold text-h7 text-primary">
-              Nombre de la receta:
-            </div>
-            <q-input
-              class="text-h5"
-              v-model="edit_nombreReceta"
-              outlined
-              autogrow
-              style="min-width: 300px"
-            ></q-input>
-          </q-card-section>
-          <q-card-section style="padding-top: 0">
-            <div class="row justify-around text-bold text-h7 text-primary">
-              Ingredientes:
-            </div>
-            <TablaDeIngredientes
-              :ingredientes="$receta.ingredientes"
-              :editable="true"
-              :addIng="true"
-            ></TablaDeIngredientes>
-          </q-card-section>
-          <div class="bg-secondary q-pa-xs" style="border-radius: 10px">
-            <div class="row justify-around text-bold text-h7 text-primary">
-              Descripción:
-            </div>
-            <div class="row justify-around">
-              <q-card-section
-                style="max-height: 300px; padding: 0"
-                class="scroll text-black text-body1 text-center text-justify"
-              >
-                <q-input
-                  filled
-                  v-model="edit_descripcion"
-                  autogrow
-                  style="min-width: 300px"
-                >
-                </q-input>
-              </q-card-section>
-            </div>
-          </div>
-          <q-card-section class="text-center">
-            <q-btn
-              label="Guardar"
-              icon-right="save"
-              color="primary"
-              style="width: 100%"
-              @click="guardarEdit()"
-            />
-          </q-card-section>
-        </q-card>
-      </q-dialog>
+      <template v-if="$receta">
+        <ProporcionDialog v-model="propor" :recipe-name="$receta.nombreReceta" :ingredients="$receta.ingredientes"
+          :options="opciones" />
+        <EditarRecetaDialog v-model="editar" :recipe="$receta" @saved="fetchRecetas" />
+      </template>
       <div v-if="!keys.length" class="absolute-center text-center no-recetas">
         <q-icon name="sentiment_dissatisfied" size="90px" color="primary" />
         <div class="text-h5 text-primary">No hay recetas para mostrar</div>
       </div>
 
-      <q-page-sticky
-        :position="keys.length > 10 ? 'bottom-center' : 'bottom'"
-        :offset="[0, 30]"
-      >
-        <q-btn
-          round
-          color="primary"
-          icon="add"
-          to="/newrecipe"
-          size="17px"
-          class="q-ma-none"
-        />
+      <q-page-sticky :position="keys.length > 10 ? 'bottom-center' : 'bottom'" :offset="[0, 30]">
+        <q-btn round color="primary" icon="add" to="/newrecipe" size="17px" class="q-ma-none" />
       </q-page-sticky>
       <q-page-sticky position="top-right" :offset="[15, 25]"> </q-page-sticky>
     </div>
@@ -350,49 +138,50 @@
 <script setup>
 import { useQuasar } from "quasar";
 import TablaDeIngredientes from "src/components/TablaDeIngredientes.vue";
+import EditarRecetaDialog from "src/components/EditarRecetaDialog.vue";
+import ProporcionDialog from "src/components/ProporcionDialog.vue";
 import { ref } from "vue";
 import { onMounted } from "vue";
 import { API_URL } from 'src/config/api';
+import { useRouter } from "vue-router";
 
 const $q = useQuasar();
 const mostrar = ref(false);
 const $receta = ref();
-const opciones = ref();
+const opciones = ref([]);
 const propor = ref(false);
-const cantidad = ref(null);
-const ingrediente = ref(null);
-const edit_descripcion = ref();
 const editar = ref(false);
-const edit_nombreReceta = ref();
 const loading = ref(false);
 const titulo = ref("Todas las recetas");
-
-// obtener todas las recetas guardadas (se cambio de localStorage a peticion a la API)
+const text = ref("");
+const recetasCache = ref([]);
+const keys = ref([]);
+const fabAbierto = ref(null);
+const router = useRouter();
 
 const fetchRecetas = async () => {
   await fetch(`${API_URL}/recetas/todas`)
     .then((response) => response.json())
-    .then((data) => (keys.value = data))
+    .then((data) => (
+      recetasCache.value = data,
+      keys.value = data
+    ))
     .catch((error) => console.error("Error:", error));
   // ordenar();
 };
-
-const keys = ref(fetchRecetas());
-
-// ordenar por orden alfabetico, y cuando se ejecuta de nuevo debe invertir el orden
 
 const ordenar = () => {
   estaOrdenadoAlfabeticamente(keys.value)
     ? keys.value.reverse()
     : keys.value.sort((a, b) => {
-        if (a.nombreReceta < b.nombreReceta) {
-          return -1;
-        }
-        if (a.nombreReceta > b.nombreReceta) {
-          return 1;
-        }
-        return 0;
-      });
+      if (a.nombreReceta < b.nombreReceta) {
+        return -1;
+      }
+      if (a.nombreReceta > b.nombreReceta) {
+        return 1;
+      }
+      return 0;
+    });
 };
 
 const estaOrdenadoAlfabeticamente = (array) => {
@@ -404,7 +193,6 @@ const estaOrdenadoAlfabeticamente = (array) => {
   return true;
 };
 
-// obtener receta seleccionada para mostrarla (se cambio de localStorage a peticion a la API)
 const obtenerReceta = async (key) => {
   await fetch(`${API_URL}/recetas/?nombreReceta=` + key)
     .then((response) => response.json())
@@ -415,13 +203,10 @@ const obtenerReceta = async (key) => {
       for (let i = 0; i < $receta.value.ingredientes.length; i++) {
         opciones.value.push($receta.value.ingredientes[i].ingrediente);
       }
-      edit_descripcion.value = $receta.value.descripcion;
-      edit_nombreReceta.value = $receta.value.nombreReceta;
     })
     .catch((error) => console.error("Error:", error));
 };
 
-// eliminar receta seleccionada (se cambio de localStorage a peticion a la API)
 const eliminarReceta = (key) => {
   $q.dialog({
     title: "Eliminar receta",
@@ -473,69 +258,59 @@ const favorita = async (receta) => {
     .catch((error) => console.error("Error:", error));
 };
 
+const resetKeys = () => {
+  if (recetasCache.value.length > 0) {
+    keys.value = recetasCache.value;
+  } else {
+    fetchRecetas();
+  }
+};
+
 const todas = async () => {
-  await fetchRecetas();
+  resetKeys();
+  text.value = "";
   titulo.value = "Todas las recetas";
 };
 
 const favoritos = async () => {
-  await fetchRecetas();
+  resetKeys();
+  text.value = "";
   titulo.value = "Recetas favoritas";
   keys.value = keys.value.filter((receta) => receta.favorita);
 };
 
 const originales = async () => {
-  await fetchRecetas();
+  resetKeys();
+  text.value = "";
   titulo.value = "Recetas originales";
   keys.value = keys.value.filter((receta) => !receta.esProporcion);
 };
 
 const proporciones = async () => {
-  await fetchRecetas();
+  resetKeys();
+  text.value = "";
   titulo.value = "Recetas en proporción";
   keys.value = keys.value.filter((receta) => receta.esProporcion);
 };
 
-// guardar receta editada (se cambio de localStorage a peticion a la API)
-const guardarEdit = async () => {
-  $q.dialog({
-    title: "Guardar cambios",
-    message: "¿Desea guardar la receta editada?",
-    cancel: true,
-    persistent: true,
-  }).onOk(async () => {
-    let recetaEdit;
-    recetaEdit = {
-      nombreReceta: edit_nombreReceta.value,
-      ingredientes: $receta.value.ingredientes,
-      descripcion: edit_descripcion.value,
-    };
+const search = async () => {
+  resetKeys();
+  if (text.value === null || text.value.trim() === "") {
+    titulo.value = "Todas las recetas";
+  } else {
+    keys.value = keys.value.filter((receta) =>
+      receta.nombreReceta.toLowerCase().includes(text.value.toLowerCase())
+    );
+    titulo.value = "Resultados de búsqueda para '" + text.value + "'";
+  }
+};
 
-    await fetch(
-      `${API_URL}/recetas/?nombreReceta=` + $receta.value.nombreReceta,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(recetaEdit),
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Success:", data);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-
-    editar.value = false;
-    await fetchRecetas();
-
-    $q.notify({
-      message: "Receta editada correctamente",
-      type: "positive",
-    });
+const verReceta = () => {
+  router.push({
+    path: "/receta",
+    query: {
+      receta: $receta.value.nombreReceta,
+    },
   });
 };
 
@@ -552,17 +327,3 @@ onMounted(async () => {
   opacity: 0.7;
 }
 </style>
-
-<script>
-export default {
-  methods: {
-    calcular(name, ingre, cant) {
-      // Navegar a la página de la calculadora con parámetros
-      this.$router.push({
-        path: "/calcu",
-        query: { receta: name, ingrediente: ingre, cantidad: cant },
-      });
-    },
-  },
-};
-</script>
