@@ -20,9 +20,9 @@
     </div>
     <div class="row justify-center">
       <q-btn v-if="!receta.esProporcion" label="Calcular proporcion" class="q-ma-md q-mt-lg col-6"
-        icon-right="calculate" color="primary" @click="propor = true" />
+        icon-right="calculate" color="primary" style="width: 100%" @click="propor = true" />
       <q-btn v-if="!receta.esProporcion" label="Editar receta" class="q-mx-md q-mb-lg col-6" icon-right="edit"
-        color="primary" @click="editar = true" />
+        color="primary" style="width: 100%" @click="editar = true" />
     </div>
     <ProporcionDialog v-model="propor" :recipe-name="receta.nombreReceta" :ingredients="receta.ingredientes"
       :options="opciones" />
