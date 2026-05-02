@@ -12,16 +12,6 @@
         />
 
         <q-toolbar-title> Calculadora de proporciones </q-toolbar-title>
-
-        <!-- Botón para instalar app -->
-        <q-btn
-          v-if="deferredPrompt && !isStandalone"
-          flat
-          dense
-          icon="download"
-          label="Instalar App"
-          @click="instalarApp"
-        />
       </q-toolbar>
     </q-header>
 
@@ -58,6 +48,20 @@
             </q-item>
             <q-separator :key="'sep' + index" v-if="menuItem.separator" />
           </template>
+
+          <!-- Botón para instalar app -->
+          <q-item
+            v-if="deferredPrompt && !isStandalone"
+            clickable
+            v-ripple
+            active-class="my-menu-link"
+            @click="instalarApp"
+          >
+            <q-item-section avatar>
+              <q-icon name="download" />
+            </q-item-section>
+            <q-item-section> Instalar App </q-item-section>
+          </q-item>
         </q-list>
       </q-scroll-area>
     </q-drawer>
