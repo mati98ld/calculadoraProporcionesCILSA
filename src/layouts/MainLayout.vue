@@ -12,6 +12,16 @@
         />
 
         <q-toolbar-title> Calculadora de proporciones </q-toolbar-title>
+
+        <!-- Botón para instalar app -->
+        <q-btn
+          v-if="deferredPrompt && !isStandalone"
+          flat
+          dense
+          icon="download"
+          label="Instalar App"
+          @click="instalarApp"
+        />
       </q-toolbar>
     </q-header>
 
@@ -59,7 +69,7 @@
 </template>
 
 <script>
-import { defineComponent, ref } from "vue";
+import { defineComponent, ref, onMounted } from "vue";
 
 const menuList = [
   {
@@ -98,13 +108,39 @@ export default defineComponent({
 
   setup() {
     const leftDrawerOpen = ref(false);
+    const deferredPrompt = ref(null);
+    const isStandalone = ref(false);
+
+    onMounted(() => {
+      // Detectar si la app ya está instalada (modo standalone)
+      isStandalone.value =
+        window.navigator.standalone === true ||
+        window.matchMedia("(display-mode: standalone)").matches;
+
+      // Solo escuchar beforeinstallprompt si NO está en standalone
+      if (!isStandalone.value) {
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          deferredPrompt.value = e;
+        });
+      }
+    });
+
+    const instalarApp = async () => {
+      if (!deferredPrompt.value) return;
+
+      deferredPrompt.value.prompt();
+    };
 
     return {
       //  essentialLinks: linksList,
       leftDrawerOpen,
+      deferredPrompt,
+      isStandalone,
       toggleLeftDrawer() {
         leftDrawerOpen.value = !leftDrawerOpen.value;
       },
+      instalarApp,
       menuList,
     };
   },
