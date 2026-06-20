@@ -3,8 +3,8 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import { config as dotenv } from "dotenv";
-import recetasRouter from "./routes/recetas.js";
-import rutinaRouter from "./routes/rutina.js";
+import recetasRouterModule from "./routes/recetas.js";
+import rutinaRouterModule from "./routes/rutina.js";
 import serverless from "serverless-http"; // <-- NUEVA LIBRERÍA
 
 dotenv();
@@ -44,7 +44,10 @@ app.use(async (req, res, next) => {
 // ------------------------------------------
 
 // Configuración de rutas (Le agregamos un prefijo /api para ordenarlo mejor en Netlify)
-app.use("/api/recetas", recetasRouter.default || recetasRouter);
+const recetasRouter = recetasRouterModule.default || recetasRouterModule;
+const rutinaRouter = rutinaRouterModule.default || rutinaRouterModule;
+
+app.use("/api/recetas", recetasRouter);
 app.use("/api/rutina", rutinaRouter);
 
 // --- SE ELIMINA EL app.listen(PORT) ---
