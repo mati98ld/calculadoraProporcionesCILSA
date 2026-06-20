@@ -1,6 +1,7 @@
 import express from "express";
 import { ComidaDiaria } from "../models/ComidaDiaria.js";
 import { ProgresoDiario } from "../models/ProgresoDiario.js";
+import { Rutina } from "../models/Rutina.js";
 
 const router = express.Router();
 
@@ -90,6 +91,41 @@ const colacion2Opciones = {
   9: "Almohaditas (1/2 taza)",
 };
 
+const opcionesDesayunoLista = Object.entries(opcionesDesayuno).map(
+  ([numero, opcion]) => ({
+    numero: Number(numero),
+    ...opcion,
+  })
+);
+
+const opcionesMeriendaLista = Object.entries(opcionesMerienda).map(
+  ([numero, opcion]) => ({
+    numero: Number(numero),
+    ...opcion,
+  })
+);
+
+const colacion1OpcionesLista = Object.entries(colacion1Opciones).map(
+  ([numero, descripcion]) => ({
+    numero: Number(numero),
+    descripcion,
+  })
+);
+
+const colacion2OpcionesLista = Object.entries(colacion2Opciones).map(
+  ([numero, descripcion]) => ({
+    numero: Number(numero),
+    descripcion,
+  })
+);
+
+const opcionesRutina = {
+  desayuno: opcionesDesayunoLista,
+  merienda: opcionesMeriendaLista,
+  colacion1: colacion1OpcionesLista,
+  colacion2: colacion2OpcionesLista,
+};
+
 // Distribución de almuerzo/cena según día de la semana
 const distribucionSemanal = {
   lunes: { almuerzo: "amarillo", cena: "rojo" },
@@ -100,6 +136,55 @@ const distribucionSemanal = {
   sabado: { almuerzo: "mixto", cena: "rojo" }, // mixto = puede ser rojo o amarillo
   domingo: { almuerzo: "rojo", cena: "rojo" },
 };
+
+const calcularProgreso = (comidaDiaria) => {
+  let totalComidas = 0;
+  let comidasConsumidas = 0;
+
+  const sumarSiCorresponde = (incluida, consumida) => {
+    if (!incluida) return;
+    totalComidas++;
+    if (consumida) comidasConsumidas++;
+  };
+
+  sumarSiCorresponde(Boolean(comidaDiaria.desayuno?.opcion), comidaDiaria.desayuno?.consumido);
+  sumarSiCorresponde(Boolean(comidaDiaria.merienda?.opcion), comidaDiaria.merienda?.consumido);
+  sumarSiCorresponde(Boolean(comidaDiaria.almuerzo?.grupoAlimentos), comidaDiaria.almuerzo?.consumido);
+  sumarSiCorresponde(Boolean(comidaDiaria.cena?.grupoAlimentos), comidaDiaria.cena?.consumido);
+  sumarSiCorresponde(comidaDiaria.colacion1?.opcional === false, comidaDiaria.colacion1?.consumido);
+  sumarSiCorresponde(comidaDiaria.colacion2?.opcional === false, comidaDiaria.colacion2?.consumido);
+  sumarSiCorresponde(Boolean(comidaDiaria.entrenamiento?.requerido), comidaDiaria.entrenamiento?.consumido);
+
+  const porcentajeComplecion =
+    totalComidas > 0 ? (comidasConsumidas / totalComidas) * 100 : 0;
+
+  return { totalComidas, comidasConsumidas, porcentajeComplecion };
+};
+
+const crearEntrenamiento = (requerido) => ({
+  requerido: Boolean(requerido),
+  consumido: false,
+  descripcion: requerido ? "Ir al gimnasio" : "",
+});
+
+router.get("/perfiles", async (_req, res) => {
+  try {
+    const perfilesRutinas = await Rutina.distinct("usuarioId");
+    const perfilesComidas = await ComidaDiaria.distinct("usuarioId");
+    const todosPerfiles = Array.from(new Set([...perfilesRutinas, ...perfilesComidas]));
+
+    res.json({
+      success: true,
+      data: todosPerfiles.sort((a, b) => a.localeCompare(b, "es")),
+    });
+  } catch (error) {
+    console.error("Error al obtener perfiles:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener los perfiles",
+    });
+  }
+});
 
 // GET: Obtener la rutina de comidas para un día específico
 router.get("/:usuarioId/:fecha", async (req, res) => {
@@ -129,11 +214,24 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
 
     // Si no existe, crear una por defecto
     if (!comidaDiaria) {
+      // Buscar si el usuario tiene una configuración general de rutina
+      const configGeneral = await Rutina.findOne({ usuarioId });
+      
+      let esEntrenamientoHoy = false;
+      let horaEntrenamientoHoy = "ninguno";
+      
+      if (configGeneral) {
+        esEntrenamientoHoy = configGeneral.diasEntrenamiento.includes(diaSemana);
+        horaEntrenamientoHoy = esEntrenamientoHoy ? (configGeneral.horaPreferidaEntrenamiento || "ninguno") : "ninguno";
+      }
+
       comidaDiaria = new ComidaDiaria({
         usuarioId,
         fecha: fechaObj,
         diaSemana,
-        esEntrenamiento: false,
+        esEntrenamiento: esEntrenamientoHoy,
+        entrenamiento: crearEntrenamiento(esEntrenamientoHoy),
+        horaEntrenamiento: horaEntrenamientoHoy,
         desayuno: {
           opcion: 1,
           descripcion: opcionesDesayuno[1].descripcion,
@@ -174,6 +272,11 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
     res.json({
       success: true,
       data: comidaDiaria,
+      opciones: opcionesRutina,
+      colacionesOpcionales: {
+        colacion1: true,
+        colacion2: true,
+      },
       distribucion: distribucionSemanal[diaSemana],
     });
   } catch (error) {
@@ -194,6 +297,10 @@ router.post("/", async (req, res) => {
       horaEntrenamiento,
       desayunoOpcion,
       meriendaOpcion,
+      colacion1Opcion,
+      colacion2Opcion,
+      incluirColacion1 = false,
+      incluirColacion2 = false,
       colacion1,
       colacion2,
     } = req.body;
@@ -223,6 +330,7 @@ router.post("/", async (req, res) => {
         diaSemana,
         esEntrenamiento,
         horaEntrenamiento,
+        entrenamiento: crearEntrenamiento(esEntrenamiento),
         desayuno: {
           opcion: desayunoOpcion || 1,
           descripcion: opcionesDesayuno[desayunoOpcion || 1].descripcion,
@@ -231,8 +339,28 @@ router.post("/", async (req, res) => {
           opcion: meriendaOpcion || 1,
           descripcion: opcionesMerienda[meriendaOpcion || 1].descripcion,
         },
-        colacion1,
-        colacion2,
+        colacion1:
+          colacion1 ||
+          (incluirColacion1 && colacion1Opcion
+            ? {
+                opcion: colacion1Opcion,
+                descripcion: colacion1Opciones[colacion1Opcion],
+                opcional: false,
+              }
+            : {
+                opcional: true,
+              }),
+        colacion2:
+          colacion2 ||
+          (incluirColacion2 && colacion2Opcion
+            ? {
+                opcion: colacion2Opcion,
+                descripcion: colacion2Opciones[colacion2Opcion],
+                opcional: false,
+              }
+            : {
+                opcional: true,
+              }),
       },
       { upsert: true, new: true }
     );
@@ -241,6 +369,11 @@ router.post("/", async (req, res) => {
       success: true,
       message: "Rutina actualizada correctamente",
       data: comidaDiaria,
+      opciones: opcionesRutina,
+      colacionesOpcionales: {
+        colacion1: true,
+        colacion2: true,
+      },
     });
   } catch (error) {
     console.error("Error al crear/actualizar rutina:", error);
@@ -272,34 +405,7 @@ router.patch("/:id/marcar-comida", async (req, res) => {
         .json({ success: false, error: "Rutina no encontrada" });
     }
 
-    // Calcular progreso
-    let totalComidas = 0;
-    let comidasConsumidas = 0;
-
-    if (comidaDiaria.desayuno?.opcion) totalComidas++;
-    if (comidaDiaria.desayuno?.consumido) comidasConsumidas++;
-
-    if (comidaDiaria.merienda?.opcion) totalComidas++;
-    if (comidaDiaria.merienda?.consumido) comidasConsumidas++;
-
-    if (comidaDiaria.almuerzo?.grupoAlimentos) totalComidas++;
-    if (comidaDiaria.almuerzo?.consumido) comidasConsumidas++;
-
-    if (comidaDiaria.cena?.grupoAlimentos) totalComidas++;
-    if (comidaDiaria.cena?.consumido) comidasConsumidas++;
-
-    if (comidaDiaria.colacion1?.opcional === false) {
-      totalComidas++;
-      if (comidaDiaria.colacion1?.consumido) comidasConsumidas++;
-    }
-
-    if (comidaDiaria.colacion2?.opcional === false) {
-      totalComidas++;
-      if (comidaDiaria.colacion2?.consumido) comidasConsumidas++;
-    }
-
-    // Actualizar progreso diario
-    const porcentajeComplecion = totalComidas > 0 ? (comidasConsumidas / totalComidas) * 100 : 0;
+    const progresoCalculado = calcularProgreso(comidaDiaria);
 
     await ProgresoDiario.findOneAndUpdate(
       {
@@ -312,9 +418,9 @@ router.patch("/:id/marcar-comida", async (req, res) => {
       {
         usuarioId: comidaDiaria.usuarioId,
         fecha: comidaDiaria.fecha,
-        totalComidas,
-        comidasConsumidas,
-        porcentajeComplecion,
+        totalComidas: progresoCalculado.totalComidas,
+        comidasConsumidas: progresoCalculado.comidasConsumidas,
+        porcentajeComplecion: progresoCalculado.porcentajeComplecion,
         updatedAt: new Date(),
       },
       { upsert: true, new: true }
@@ -325,9 +431,9 @@ router.patch("/:id/marcar-comida", async (req, res) => {
       message: `${tipoComida} marcada como ${consumido ? "consumida" : "no consumida"}`,
       data: comidaDiaria,
       progreso: {
-        totalComidas,
-        comidasConsumidas,
-        porcentajeComplecion: porcentajeComplecion.toFixed(2) + "%",
+        totalComidas: progresoCalculado.totalComidas,
+        comidasConsumidas: progresoCalculado.comidasConsumidas,
+        porcentajeComplecion: progresoCalculado.porcentajeComplecion.toFixed(2) + "%",
       },
     });
   } catch (error) {
@@ -413,6 +519,178 @@ router.get("/historial/:usuarioId", async (req, res) => {
       success: false,
       error: "Error al obtener el historial",
     });
+  }
+});
+
+// GET: Obtener la configuración general de rutina
+router.get("/config/:usuarioId", async (req, res) => {
+  try {
+    const { usuarioId } = req.params;
+    const rutinaConfig = await Rutina.findOne({ usuarioId });
+    res.json({
+      success: true,
+      data: rutinaConfig
+    });
+  } catch (error) {
+    console.error("Error al obtener config de rutina:", error);
+    res.status(500).json({ success: false, error: "Error al obtener la configuración" });
+  }
+});
+
+// POST: Crear/Actualizar la configuración general de rutina del usuario
+router.post("/config", async (req, res) => {
+  try {
+    const { usuarioId, objetivos, diasEntrenamiento, horaPreferidaEntrenamiento } = req.body;
+
+    const objetivosArray = Array.isArray(objetivos)
+      ? objetivos
+      : typeof objetivos === "string"
+      ? objetivos.split(",").map(s => s.trim()).filter(Boolean)
+      : [];
+
+    const rutinaConfig = await Rutina.findOneAndUpdate(
+      { usuarioId },
+      {
+        usuarioId,
+        nombre: usuarioId,
+        objetivos: objetivosArray,
+        diasEntrenamiento: Array.isArray(diasEntrenamiento) ? diasEntrenamiento : [],
+        horaPreferidaEntrenamiento: horaPreferidaEntrenamiento || "ninguno",
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    // Si hoy hay un registro de ComidaDiaria creado, actualizar si es entrenamiento o no
+    const hoy = new Date();
+    const diaSemana = [
+      "domingo",
+      "lunes",
+      "martes",
+      "miercoles",
+      "jueves",
+      "viernes",
+      "sabado",
+    ][hoy.getDay()];
+    
+    const fechaInicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const comidaDiaria = await ComidaDiaria.findOne({
+      usuarioId,
+      fecha: {
+        $gte: fechaInicioHoy,
+        $lt: new Date(fechaInicioHoy.getTime() + 24 * 60 * 60 * 1000),
+      }
+    });
+
+    if (comidaDiaria) {
+      const esEntrenamientoHoy = (diasEntrenamiento || []).includes(diaSemana);
+      comidaDiaria.esEntrenamiento = esEntrenamientoHoy;
+      comidaDiaria.entrenamiento = crearEntrenamiento(esEntrenamientoHoy);
+      comidaDiaria.horaEntrenamiento = esEntrenamientoHoy ? (horaPreferidaEntrenamiento || "ninguno") : "ninguno";
+      await comidaDiaria.save();
+
+      // Recalcular progreso
+      const progresoCalculado = calcularProgreso(comidaDiaria);
+      await ProgresoDiario.findOneAndUpdate(
+        {
+          usuarioId,
+          fecha: {
+            $gte: comidaDiaria.fecha,
+            $lt: new Date(comidaDiaria.fecha.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+        {
+          usuarioId,
+          fecha: comidaDiaria.fecha,
+          totalComidas: progresoCalculado.totalComidas,
+          comidasConsumidas: progresoCalculado.comidasConsumidas,
+          porcentajeComplecion: progresoCalculado.porcentajeComplecion,
+          updatedAt: new Date(),
+        },
+        { upsert: true }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Configuración de rutina guardada correctamente",
+      data: rutinaConfig
+    });
+  } catch (error) {
+    console.error("Error al guardar config de rutina:", error);
+    res.status(500).json({ success: false, error: "Error al guardar la configuración" });
+  }
+});
+
+// PATCH: Cambiar opción de comida (desayuno, merienda, etc.) y recalcular progreso
+router.patch("/:id/actualizar-opcion", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipoComida, opcion } = req.body; // tipoComida: "desayuno" | "merienda", opcion: número
+
+    let descripcion = "";
+    if (tipoComida === "desayuno") {
+      if (!opcionesDesayuno[opcion]) {
+        return res.status(400).json({ success: false, error: "Opción de desayuno inválida" });
+      }
+      descripcion = opcionesDesayuno[opcion].descripcion;
+    } else if (tipoComida === "merienda") {
+      if (!opcionesMerienda[opcion]) {
+        return res.status(400).json({ success: false, error: "Opción de merienda inválida" });
+      }
+      descripcion = opcionesMerienda[opcion].descripcion;
+    } else {
+      return res.status(400).json({ success: false, error: "Tipo de comida no soportado para cambiar de opción" });
+    }
+
+    const actualizacion = {
+      [`${tipoComida}.opcion`]: opcion,
+      [`${tipoComida}.descripcion`]: descripcion,
+      updatedAt: new Date(),
+    };
+
+    const comidaDiaria = await ComidaDiaria.findByIdAndUpdate(id, actualizacion, {
+      new: true,
+    });
+
+    if (!comidaDiaria) {
+      return res.status(404).json({ success: false, error: "Rutina no encontrada" });
+    }
+
+    const progresoCalculado = calcularProgreso(comidaDiaria);
+
+    await ProgresoDiario.findOneAndUpdate(
+      {
+        usuarioId: comidaDiaria.usuarioId,
+        fecha: {
+          $gte: comidaDiaria.fecha,
+          $lt: new Date(comidaDiaria.fecha.getTime() + 24 * 60 * 60 * 1000),
+        },
+      },
+      {
+        usuarioId: comidaDiaria.usuarioId,
+        fecha: comidaDiaria.fecha,
+        totalComidas: progresoCalculado.totalComidas,
+        comidasConsumidas: progresoCalculado.comidasConsumidas,
+        porcentajeComplecion: progresoCalculado.porcentajeComplecion,
+        updatedAt: new Date(),
+      },
+      { upsert: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Opción de ${tipoComida} actualizada correctamente`,
+      data: comidaDiaria,
+      progreso: {
+        totalComidas: progresoCalculado.totalComidas,
+        comidasConsumidas: progresoCalculado.comidasConsumidas,
+        porcentajeComplecion: progresoCalculado.porcentajeComplecion.toFixed(2) + "%",
+      },
+    });
+  } catch (error) {
+    console.error("Error al actualizar opción de comida:", error);
+    res.status(500).json({ success: false, error: "Error al actualizar la opción" });
   }
 });
 

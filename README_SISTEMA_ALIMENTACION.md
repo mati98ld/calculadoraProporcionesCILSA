@@ -92,9 +92,16 @@ Response:
 {
   "success": true,
   "data": { /* ComidaDiaria */ },
+  "opciones": { /* Catálogo completo de opciones */ },
+  "colacionesOpcionales": {
+    "colacion1": true,
+    "colacion2": true
+  },
   "distribucion": { "almuerzo": "amarillo", "cena": "rojo" }
 }
 ```
+
+El campo `opciones` incluye todas las alternativas disponibles para desayuno, merienda y las dos colaciones. Las colaciones están marcadas como opcionales, por lo que el usuario puede no incluirlas en su rutina diaria.
 
 ---
 
@@ -111,7 +118,9 @@ POST /api/rutina
   "esEntrenamiento": true,
   "horaEntrenamiento": "antes17",
   "desayunoOpcion": 2,
-  "meriendaOpcion": 1
+  "meriendaOpcion": 1,
+  "incluirColacion1": false,
+  "incluirColacion2": false
 }
 ```
 

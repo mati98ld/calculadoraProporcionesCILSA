@@ -20,6 +20,17 @@ const ComidaDiariaSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  entrenamiento: {
+    requerido: {
+      type: Boolean,
+      default: false,
+    },
+    consumido: {
+      type: Boolean,
+      default: false,
+    },
+    descripcion: String,
+  },
   horaEntrenamiento: {
     type: String, // "antes17" o "despues18"
     enum: ["antes17", "despues18", "ninguno"],
