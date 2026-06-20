@@ -7,6 +7,7 @@ const routes = [
       { path: "/help", component: () => import("pages/HelpItem.vue") },
       { path: "/newrecipe", component: () => import("pages/NuevaReceta.vue") },
       { path: "/misrecetas", component: () => import("pages/MisRecetas.vue") },
+      { path: "/mi-rutina", component: () => import("pages/MiRutina.vue") },
       {
         path: "/calcu",
         component: () => import("pages/CalculadoraProporciones.vue"),

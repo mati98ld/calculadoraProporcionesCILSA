@@ -95,6 +95,12 @@ const menuList = [
     to: "/newrecipe",
   },
   {
+    icon: "restaurant_menu",
+    label: "Mi rutina",
+    separator: true,
+    to: "/mi-rutina",
+  },
+  {
     icon: "help",
     iconColor: "primary",
     label: "Ayuda",
