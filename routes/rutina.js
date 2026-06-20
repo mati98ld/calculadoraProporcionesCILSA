@@ -226,7 +226,7 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
       let horaEntrenamientoHoy = "ninguno";
       
       if (configGeneral) {
-        esEntrenamientoHoy = configGeneral.diasEntrenamiento.includes(diaSemana);
+        esEntrenamientoHoy = Array.isArray(configGeneral.diasEntrenamiento) && configGeneral.diasEntrenamiento.includes(diaSemana);
         horaEntrenamientoHoy = esEntrenamientoHoy ? (configGeneral.horaPreferidaEntrenamiento || "ninguno") : "ninguno";
       }
 
@@ -288,7 +288,7 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
     console.error("Error al obtener rutina:", error);
     res
       .status(500)
-      .json({ success: false, error: "Error al obtener la rutina" });
+      .json({ success: false, error: "Error al obtener la rutina: " + error.message, stack: error.stack });
   }
 });
 
