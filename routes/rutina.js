@@ -191,6 +191,149 @@ router.get("/perfiles", async (_req, res) => {
   }
 });
 
+// GET: Obtener la configuración general de rutina
+router.get("/config/:usuarioId", async (req, res) => {
+  try {
+    const { usuarioId } = req.params;
+    const rutinaConfig = await Rutina.findOne({ usuarioId });
+    res.json({
+      success: true,
+      data: rutinaConfig
+    });
+  } catch (error) {
+    console.error("Error al obtener config de rutina:", error);
+    res.status(500).json({ success: false, error: "Error al obtener la configuración" });
+  }
+});
+
+// POST: Crear/Actualizar la configuración general de rutina del usuario
+router.post("/config", async (req, res) => {
+  try {
+    const { usuarioId, objetivos, diasEntrenamiento, horaPreferidaEntrenamiento } = req.body;
+
+    const objetivosArray = Array.isArray(objetivos)
+      ? objetivos
+      : typeof objetivos === "string"
+      ? objetivos.split(",").map(s => s.trim()).filter(Boolean)
+      : [];
+
+    const rutinaConfig = await Rutina.findOneAndUpdate(
+      { usuarioId },
+      {
+        usuarioId,
+        nombre: usuarioId,
+        objetivos: objetivosArray,
+        diasEntrenamiento: Array.isArray(diasEntrenamiento) ? diasEntrenamiento : [],
+        horaPreferidaEntrenamiento: horaPreferidaEntrenamiento || "ninguno",
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    // Si hoy hay un registro de ComidaDiaria creado, actualizar si es entrenamiento o no
+    const hoy = new Date();
+    const diaSemana = [
+      "domingo",
+      "lunes",
+      "martes",
+      "miercoles",
+      "jueves",
+      "viernes",
+      "sabado",
+    ][hoy.getDay()];
+    
+    const fechaInicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const comidaDiaria = await ComidaDiaria.findOne({
+      usuarioId,
+      fecha: {
+        $gte: fechaInicioHoy,
+        $lt: new Date(fechaInicioHoy.getTime() + 24 * 60 * 60 * 1000),
+      }
+    });
+
+    if (comidaDiaria) {
+      const esEntrenamientoHoy = (diasEntrenamiento || []).includes(diaSemana);
+      comidaDiaria.esEntrenamiento = esEntrenamientoHoy;
+      comidaDiaria.entrenamiento = crearEntrenamiento(esEntrenamientoHoy);
+      comidaDiaria.horaEntrenamiento = esEntrenamientoHoy ? (horaPreferidaEntrenamiento || "ninguno") : "ninguno";
+      await comidaDiaria.save();
+
+      // Recalcular progreso
+      const progresoCalculado = calcularProgreso(comidaDiaria);
+      await ProgresoDiario.findOneAndUpdate(
+        {
+          usuarioId,
+          fecha: {
+            $gte: comidaDiaria.fecha,
+            $lt: new Date(comidaDiaria.fecha.getTime() + 24 * 60 * 60 * 1000),
+          },
+        },
+        {
+          usuarioId,
+          fecha: comidaDiaria.fecha,
+          totalComidas: progresoCalculado.totalComidas,
+          comidasConsumidas: progresoCalculado.comidasConsumidas,
+          porcentajeComplecion: progresoCalculado.porcentajeComplecion,
+          updatedAt: new Date(),
+        },
+        { upsert: true }
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Configuración de rutina guardada correctamente",
+      data: rutinaConfig
+    });
+  } catch (error) {
+    console.error("Error al guardar config de rutina:", error);
+    res.status(500).json({ success: false, error: "Error al guardar la configuración" });
+  }
+});
+
+// GET: Obtener progreso histórico (últimos 7 días)
+router.get("/historial/:usuarioId", async (req, res) => {
+  try {
+    const { usuarioId } = req.params;
+    const { dias = 7 } = req.query;
+
+    const fechaInicio = new Date();
+    fechaInicio.setDate(fechaInicio.getDate() - parseInt(dias));
+
+    const historial = await ProgresoDiario.find({
+      usuarioId,
+      fecha: { $gte: fechaInicio },
+    }).sort({ fecha: -1 });
+
+    const porcentajePromedio =
+      historial.length > 0
+        ? (
+            historial.reduce((sum, dia) => sum + dia.porcentajeComplecion, 0) /
+            historial.length
+          ).toFixed(2)
+        : 0;
+
+    res.json({
+      success: true,
+      data: {
+        historial,
+        estadisticas: {
+          diasRegistrados: historial.length,
+          porcentajePromedio,
+          diasCompletos: historial.filter((d) => d.porcentajeComplecion === 100)
+            .length,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error al obtener historial:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener el historial",
+    });
+  }
+});
+
 // GET: Obtener la rutina de comidas para un día específico
 router.get("/:usuarioId/:fecha", async (req, res) => {
   try {
@@ -484,148 +627,7 @@ router.get("/progreso/:usuarioId/:fecha", async (req, res) => {
   }
 });
 
-// GET: Obtener progreso histórico (últimos 7 días)
-router.get("/historial/:usuarioId", async (req, res) => {
-  try {
-    const { usuarioId } = req.params;
-    const { dias = 7 } = req.query;
 
-    const fechaInicio = new Date();
-    fechaInicio.setDate(fechaInicio.getDate() - parseInt(dias));
-
-    const historial = await ProgresoDiario.find({
-      usuarioId,
-      fecha: { $gte: fechaInicio },
-    }).sort({ fecha: -1 });
-
-    const porcentajePromedio =
-      historial.length > 0
-        ? (
-            historial.reduce((sum, dia) => sum + dia.porcentajeComplecion, 0) /
-            historial.length
-          ).toFixed(2)
-        : 0;
-
-    res.json({
-      success: true,
-      data: {
-        historial,
-        estadisticas: {
-          diasRegistrados: historial.length,
-          porcentajePromedio,
-          diasCompletos: historial.filter((d) => d.porcentajeComplecion === 100)
-            .length,
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Error al obtener historial:", error);
-    res.status(500).json({
-      success: false,
-      error: "Error al obtener el historial",
-    });
-  }
-});
-
-// GET: Obtener la configuración general de rutina
-router.get("/config/:usuarioId", async (req, res) => {
-  try {
-    const { usuarioId } = req.params;
-    const rutinaConfig = await Rutina.findOne({ usuarioId });
-    res.json({
-      success: true,
-      data: rutinaConfig
-    });
-  } catch (error) {
-    console.error("Error al obtener config de rutina:", error);
-    res.status(500).json({ success: false, error: "Error al obtener la configuración" });
-  }
-});
-
-// POST: Crear/Actualizar la configuración general de rutina del usuario
-router.post("/config", async (req, res) => {
-  try {
-    const { usuarioId, objetivos, diasEntrenamiento, horaPreferidaEntrenamiento } = req.body;
-
-    const objetivosArray = Array.isArray(objetivos)
-      ? objetivos
-      : typeof objetivos === "string"
-      ? objetivos.split(",").map(s => s.trim()).filter(Boolean)
-      : [];
-
-    const rutinaConfig = await Rutina.findOneAndUpdate(
-      { usuarioId },
-      {
-        usuarioId,
-        nombre: usuarioId,
-        objetivos: objetivosArray,
-        diasEntrenamiento: Array.isArray(diasEntrenamiento) ? diasEntrenamiento : [],
-        horaPreferidaEntrenamiento: horaPreferidaEntrenamiento || "ninguno",
-        updatedAt: new Date()
-      },
-      { upsert: true, new: true }
-    );
-
-    // Si hoy hay un registro de ComidaDiaria creado, actualizar si es entrenamiento o no
-    const hoy = new Date();
-    const diaSemana = [
-      "domingo",
-      "lunes",
-      "martes",
-      "miercoles",
-      "jueves",
-      "viernes",
-      "sabado",
-    ][hoy.getDay()];
-    
-    const fechaInicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    const comidaDiaria = await ComidaDiaria.findOne({
-      usuarioId,
-      fecha: {
-        $gte: fechaInicioHoy,
-        $lt: new Date(fechaInicioHoy.getTime() + 24 * 60 * 60 * 1000),
-      }
-    });
-
-    if (comidaDiaria) {
-      const esEntrenamientoHoy = (diasEntrenamiento || []).includes(diaSemana);
-      comidaDiaria.esEntrenamiento = esEntrenamientoHoy;
-      comidaDiaria.entrenamiento = crearEntrenamiento(esEntrenamientoHoy);
-      comidaDiaria.horaEntrenamiento = esEntrenamientoHoy ? (horaPreferidaEntrenamiento || "ninguno") : "ninguno";
-      await comidaDiaria.save();
-
-      // Recalcular progreso
-      const progresoCalculado = calcularProgreso(comidaDiaria);
-      await ProgresoDiario.findOneAndUpdate(
-        {
-          usuarioId,
-          fecha: {
-            $gte: comidaDiaria.fecha,
-            $lt: new Date(comidaDiaria.fecha.getTime() + 24 * 60 * 60 * 1000),
-          },
-        },
-        {
-          usuarioId,
-          fecha: comidaDiaria.fecha,
-          totalComidas: progresoCalculado.totalComidas,
-          comidasConsumidas: progresoCalculado.comidasConsumidas,
-          porcentajeComplecion: progresoCalculado.porcentajeComplecion,
-          updatedAt: new Date(),
-        },
-        { upsert: true }
-      );
-    }
-
-    res.json({
-      success: true,
-      message: "Configuración de rutina guardada correctamente",
-      data: rutinaConfig
-    });
-  } catch (error) {
-    console.error("Error al guardar config de rutina:", error);
-    res.status(500).json({ success: false, error: "Error al guardar la configuración" });
-  }
-});
 
 // PATCH: Cambiar opción de comida (desayuno, merienda, etc.) y recalcular progreso
 router.patch("/:id/actualizar-opcion", async (req, res) => {
