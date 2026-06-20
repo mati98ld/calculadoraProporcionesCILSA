@@ -181,7 +181,8 @@ router.get("/perfiles", async (_req, res) => {
     console.error("Error al obtener perfiles:", error);
     res.status(500).json({
       success: false,
-      error: "Error al obtener los perfiles",
+      error: "Error al obtener los perfiles: " + error.message,
+      stack: error.stack,
     });
   }
 });
