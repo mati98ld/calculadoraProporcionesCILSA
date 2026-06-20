@@ -169,8 +169,12 @@ const crearEntrenamiento = (requerido) => ({
 
 router.get("/perfiles", async (_req, res) => {
   try {
-    const perfilesRutinas = await Rutina.distinct("usuarioId");
-    const perfilesComidas = await ComidaDiaria.distinct("usuarioId");
+    const docsRutinas = await Rutina.find().select("usuarioId").lean();
+    const docsComidas = await ComidaDiaria.find().select("usuarioId").lean();
+
+    const perfilesRutinas = docsRutinas.map(r => r.usuarioId).filter(Boolean);
+    const perfilesComidas = docsComidas.map(c => c.usuarioId).filter(Boolean);
+
     const todosPerfiles = Array.from(new Set([...perfilesRutinas, ...perfilesComidas]));
 
     res.json({

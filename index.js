@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- NUEVA LÓGICA DE CONEXIÓN A MONGODB ---
 const clientOptions = {
-  serverApi: { version: "1", strict: true, deprecationErrors: true },
+  serverApi: { version: "1", strict: false, deprecationErrors: true },
 };
 
 // Variable global para guardar la conexión y no saturar Mongo
