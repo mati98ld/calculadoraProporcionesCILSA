@@ -62,24 +62,7 @@
             </div>
           </div>
 
-          <div class="row q-gutter-sm">
-            <q-btn
-              outline
-              color="primary"
-              icon="edit"
-              label="Configurar Perfil"
-              class="animated-btn"
-              @click="abrirEditarPerfil"
-            />
-            <q-btn
-              outline
-              color="grey-7"
-              icon="logout"
-              label="Cambiar de perfil"
-              class="animated-btn"
-              @click="cerrarSesionPerfil"
-            />
-          </div>
+
         </div>
       </div>
 
@@ -354,6 +337,34 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- MENU FLOTANTE DE OPCIONES DE PERFIL -->
+    <q-page-sticky v-if="nombreActivo" position="bottom-right" :offset="[18, 18]">
+      <q-fab
+        icon="manage_accounts"
+        active-icon="close"
+        direction="up"
+        color="primary"
+        class="shadow-5"
+      >
+        <q-fab-action
+          external-label
+          label-position="left"
+          label="Configurar Perfil"
+          color="accent"
+          icon="edit"
+          @click="abrirEditarPerfil"
+        />
+        <q-fab-action
+          external-label
+          label-position="left"
+          label="Cambiar de perfil"
+          color="red"
+          icon="logout"
+          @click="cerrarSesionPerfil"
+        />
+      </q-fab>
+    </q-page-sticky>
   </q-page>
 </template>
 

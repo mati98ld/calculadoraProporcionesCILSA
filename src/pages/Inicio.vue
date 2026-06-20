@@ -18,17 +18,20 @@
     <q-btn
       class="q-ma-md"
       color="primary"
-      label="mi rutina"
-      to="/mi-rutina"
-      icon-right="restaurant_menu"
-    ></q-btn>
-    <q-btn
-      class="q-ma-md"
-      color="primary"
       label="nueva receta"
       to="/newrecipe"
       icon-right="post_add"
     ></q-btn>
+    <div> 
+      <q-btn
+        class="q-ma-md mt-6"
+        color="primary"
+        label="mi rutina"
+        to="/mi-rutina"
+        icon-right="restaurant_menu"
+      ></q-btn> 
+    <span class="text-primary">Nuevo!</span>
+  </div>
   </q-page>
 </template>
 
