@@ -295,7 +295,7 @@
       <q-card style="min-width: 350px; border-radius: 16px;" class="q-pa-md">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6 text-purple text-bold">
-            {{ nuevoPerfilForm.nombre === nombreActivo ? "Configurar Perfil" : "Crear Perfil Personal" }}
+            {{ nombreActivo ? "Configurar Perfil" : "Crear Perfil Personal" }}
           </div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
@@ -309,7 +309,7 @@
               dense
               label="Tu nombre"
               :rules="[(val) => !!val || 'El nombre es obligatorio']"
-              :disable="nuevoPerfilForm.nombre === nombreActivo"
+              :disable="!!nombreActivo"
               hint="El nombre te identificará para entrar siempre a tu rutina."
             />
 
@@ -344,7 +344,7 @@
             <div class="row justify-end q-mt-lg q-gutter-sm">
               <q-btn label="Cancelar" color="grey" flat v-close-popup />
               <q-btn
-                :label="nuevoPerfilForm.nombre === nombreActivo ? 'Guardar Cambios' : 'Crear Perfil'"
+                :label="nombreActivo ? 'Guardar Cambios' : 'Crear Perfil'"
                 color="primary"
                 type="submit"
                 :loading="guardandoPerfil"
@@ -638,6 +638,20 @@ const abrirEditarPerfil = () => {
 const guardarPerfilGeneral = async () => {
   const nombre = nuevoPerfilForm.value.nombre.trim();
   if (!nombre) return;
+
+  // Si se está creando un perfil nuevo, verificar que el nombre no exista
+  if (!nombreActivo.value) {
+    const existe = perfiles.value.some(
+      (p) => p.toLowerCase() === nombre.toLowerCase()
+    );
+    if (existe) {
+      $q.notify({
+        type: "warning",
+        message: `El nombre "${nombre}" ya está en uso. Por favor, elegí otro nombre.`,
+      });
+      return;
+    }
+  }
 
   guardandoPerfil.value = true;
   try {
