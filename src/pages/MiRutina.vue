@@ -444,6 +444,7 @@ const guardarPerfilGeneral = async (formData) => {
     // Cargar rutina diaria actualizada
     await cargarRutina();
     await cargarPerfiles();
+    await cargarHistorial();
   } catch (error) {
     $q.notify({ type: "negative", message: error.message || "Error al guardar el perfil" });
   } finally {
@@ -512,6 +513,7 @@ const marcarComida = async (tipoComida, consumido) => {
 
     rutina.value = data.data;
     recalcularProgreso(data.data);
+    await cargarHistorial();
 
     $q.notify({
       type: "positive",
@@ -546,6 +548,7 @@ const cambiarOpcionComida = async (tipoComida, opcionNumero) => {
     }
 
     rutina.value = data.data;
+    selectedOptionModel.value[tipoComida] = data.data[tipoComida]?.opcion || opcionNumero;
     recalcularProgreso(data.data);
 
     $q.notify({
