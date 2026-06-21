@@ -231,7 +231,8 @@ router.post("/config", async (req, res) => {
     );
 
     // Si hoy hay un registro de ComidaDiaria creado, actualizar si es entrenamiento o no
-    const hoy = new Date();
+    const localDateString = new Date().toLocaleString("en-US", { timeZone: "America/Buenos_Aires" });
+    const hoyLocal = new Date(localDateString);
     const diaSemana = [
       "domingo",
       "lunes",
@@ -240,9 +241,9 @@ router.post("/config", async (req, res) => {
       "jueves",
       "viernes",
       "sabado",
-    ][hoy.getDay()];
+    ][hoyLocal.getDay()];
     
-    const fechaInicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const fechaInicioHoy = new Date(Date.UTC(hoyLocal.getFullYear(), hoyLocal.getMonth(), hoyLocal.getDate()));
     const comidaDiaria = await ComidaDiaria.findOne({
       usuarioId,
       fecha: {
@@ -349,7 +350,7 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
       "jueves",
       "viernes",
       "sabado",
-    ][fechaObj.getDay()];
+    ][fechaObj.getUTCDay()];
 
     // Buscar si existe rutina para ese día
     let comidaDiaria = await ComidaDiaria.findOne({
@@ -462,7 +463,7 @@ router.post("/", async (req, res) => {
       "jueves",
       "viernes",
       "sabado",
-    ][fechaObj.getDay()];
+    ][fechaObj.getUTCDay()];
 
     let comidaDiaria = await ComidaDiaria.findOneAndUpdate(
       {
