@@ -89,8 +89,22 @@
         </q-select>
       </div>
 
-      <div class="text-body2 text-grey-9 q-mb-sm text-italic" v-if="meal.recetaNombre">
-        <strong>Receta vinculada:</strong> {{ meal.descripcion }}
+      <div class="text-body2 text-grey-9 q-mb-sm" v-if="meal.recetaNombre">
+        <div class="row items-center justify-between bg-purple-1 q-pa-md rounded-borders shadow-1" style="border: 1px solid rgba(138, 90, 157, 0.25);">
+          <div class="row items-center">
+            <q-icon name="restaurant_menu" color="purple" class="q-mr-sm" size="sm" />
+            <span class="text-bold text-purple text-subtitle1">{{ meal.recetaNombre }}</span>
+          </div>
+          <q-btn
+            color="purple"
+            flat
+            dense
+            icon="visibility"
+            label="Ver Receta"
+            class="q-px-sm bg-white shadow-1"
+            @click="verReceta"
+          />
+        </div>
       </div>
       <div class="text-body2 text-grey-9 q-mb-sm" v-else>
         {{ meal.descripcion || "Sin descripción disponible" }}
@@ -113,12 +127,35 @@
           </q-item-section>
         </q-item>
       </q-list>
+
+      <!-- INDICACIONES DE ENTRENAMIENTO (GIMNASIO) -->
+      <div v-if="meal.adicional" class="q-mt-md q-pa-md bg-purple-1 text-purple-9 rounded-borders shadow-1" style="border: 1px solid rgba(138, 90, 157, 0.25);">
+        <div class="row items-center q-gutter-x-xs q-mb-xs">
+          <q-icon name="fitness_center" color="purple" size="sm" class="q-mr-xs" />
+          <span class="text-bold text-subtitle2 text-purple">Día de Gimnasio - Carbohidratos Extras</span>
+        </div>
+        <div class="text-body2 text-purple-10" style="line-height: 1.4;">
+          {{ meal.adicional }}
+        </div>
+      </div>
     </q-card-section>
   </q-card>
 </template>
 
 <script setup>
 import { computed } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+
+const verReceta = () => {
+  if (props.meal.recetaNombre) {
+    router.push({
+      path: "/receta",
+      query: { receta: props.meal.recetaNombre },
+    });
+  }
+};
 
 const props = defineProps({
   meal: {

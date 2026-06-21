@@ -236,6 +236,7 @@ const meals = computed(() => {
       consumido: Boolean(meal.consumido),
       recetaNombre: meal.recetaNombre || null,
       recetaId: meal.recetaId || null,
+      adicional: meal.grupoAlimentos?.adicional || null,
     };
   });
 
@@ -264,16 +265,7 @@ const getTodayISO = () => {
 
 const buildMealItems = (key, meal) => {
   if (meal.recetaNombre) {
-    const found = recetas.value.find(
-      (r) =>
-        r._id === meal.recetaId ||
-        r.nombreReceta.toLowerCase() === meal.recetaNombre.toLowerCase()
-    );
-    if (found && found.ingredientes) {
-      return found.ingredientes.map(
-        (i) => `${i.cantidad} ${i.unidad || "ud"} de ${i.ingrediente}`
-      );
-    }
+    return [];
   }
 
   if (meal.grupoAlimentos) {
@@ -282,15 +274,15 @@ const buildMealItems = (key, meal) => {
       meal.grupoAlimentos.proteina?.cantidad ||
       meal.grupoAlimentos.proteina?.tipo
     ) {
-      items.push(
-        `${meal.grupoAlimentos.proteina?.cantidad || ""} ${
-          meal.grupoAlimentos.proteina?.tipo || ""
-        }`.trim()
-      );
+      let pText = `${meal.grupoAlimentos.proteina?.cantidad || ""} ${
+        meal.grupoAlimentos.proteina?.tipo || ""
+      }`.trim();
+      if (meal.grupoAlimentos.proteina?.tipo === "carne") {
+        pText += " (Vaca, Pollo, Cerdo o Pescado)";
+      }
+      items.push(pText);
     }
     if (meal.grupoAlimentos.verdura) items.push(meal.grupoAlimentos.verdura);
-    if (meal.grupoAlimentos.adicional)
-      items.push(meal.grupoAlimentos.adicional);
     return items.filter(Boolean);
   }
 
