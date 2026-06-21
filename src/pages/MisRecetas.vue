@@ -55,9 +55,19 @@
               @click="favorita(receta.nombreReceta)" />
           </q-item-section>
           <q-item-section>
-            <h6 class="text-bold text-purple q-ma-xs">
-              · {{ receta.nombreReceta }}
-            </h6>
+            <div class="row items-center no-wrap">
+              <span class="text-bold text-purple text-h6 q-my-none">
+                · {{ receta.nombreReceta }}
+              </span>
+              <q-badge
+                v-if="receta.tipoAlimento"
+                :color="colorTipoAlimento(receta.tipoAlimento)"
+                class="q-ml-sm q-py-xs"
+                style="font-size: 0.75rem;"
+              >
+                {{ traducirTipoAlimento(receta.tipoAlimento) }}
+              </q-badge>
+            </div>
           </q-item-section>
 
           <q-item-section avatar>
@@ -317,6 +327,28 @@ const verReceta = () => {
       receta: $receta.value.nombreReceta,
     },
   });
+};
+
+const traducirTipoAlimento = (tipo) => {
+  const mapeo = {
+    proteina: "Proteína",
+    verdura: "Verdura",
+    carbohidrato: "Carbohidrato",
+    mixto: "Mixto",
+    desayuno_merienda: "Desayuno/Merienda",
+  };
+  return mapeo[tipo] || "";
+};
+
+const colorTipoAlimento = (tipo) => {
+  const mapeo = {
+    proteina: "red",
+    verdura: "green",
+    carbohidrato: "orange",
+    mixto: "purple",
+    desayuno_merienda: "blue",
+  };
+  return mapeo[tipo] || "grey";
 };
 
 onMounted(async () => {

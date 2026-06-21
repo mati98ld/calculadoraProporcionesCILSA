@@ -15,6 +15,22 @@
         <q-input v-model="editNombreReceta" class="text-h5" outlined autogrow style="min-width: 300px" />
       </q-card-section>
       <q-card-section style="padding-top: 0">
+        <div class="row justify-around text-bold text-h7 text-primary q-mb-xs">
+          Categoría:
+        </div>
+        <q-select
+          v-model="editTipoAlimento"
+          :options="tipoAlimentoOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Categoría"
+          style="min-width: 300px"
+          class="q-mb-md"
+        />
+      </q-card-section>
+      <q-card-section style="padding-top: 0">
         <div class="row justify-around text-bold text-h7 text-primary">
           Ingredientes:
         </div>
@@ -53,7 +69,7 @@ const props = defineProps({
   },
   recipe: {
     type: Object,
-    default: () => ({ nombreReceta: "", ingredientes: [], descripcion: "" }),
+    default: () => ({ nombreReceta: "", ingredientes: [], descripcion: "", tipoAlimento: "" }),
   },
   title: {
     type: String,
@@ -67,8 +83,18 @@ const $q = useQuasar();
 const editNombreReceta = ref("");
 const editDescripcion = ref("");
 const editIngredientes = ref([]);
+const editTipoAlimento = ref("");
 const originalName = ref("");
 const loading = ref(false);
+
+const tipoAlimentoOptions = [
+  { label: "Proteína", value: "proteina" },
+  { label: "Verdura", value: "verdura" },
+  { label: "Carbohidrato", value: "carbohidrato" },
+  { label: "Mixto (Proteína + Verdura)", value: "mixto" },
+  { label: "Desayuno / Merienda", value: "desayuno_merienda" },
+  { label: "Sin especificar", value: "" },
+];
 
 const dialogOpen = computed({
   get: () => props.modelValue,
@@ -81,6 +107,7 @@ const syncFromRecipe = () => {
   editIngredientes.value = JSON.parse(
     JSON.stringify(props.recipe?.ingredientes || [])
   );
+  editTipoAlimento.value = props.recipe?.tipoAlimento || "";
   originalName.value = props.recipe?.nombreReceta || "";
 };
 
@@ -90,6 +117,7 @@ const handleSave = async () => {
     nombreReceta: editNombreReceta.value.trim(),
     ingredientes: editIngredientes.value,
     descripcion: editDescripcion.value,
+    tipoAlimento: editTipoAlimento.value,
   };
 
   $q.dialog({

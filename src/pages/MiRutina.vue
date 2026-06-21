@@ -1,53 +1,13 @@
 <template>
   <q-page padding class="mi-rutina-page bg-secondary">
     <!-- PANTALLA 1: SELECCIÓN DE PERFIL -->
-    <div v-if="!nombreActivo" class="profile-selection-container q-py-xl">
-      <div class="text-center q-mb-xl">
-        <h4 class="text-bold text-purple q-my-none">¿Quién ingresa hoy?</h4>
-        <p class="text-subtitle1 text-grey-8 q-mt-sm">
-          Seleccioná tu perfil para ver tu rutina personalizada o creá uno nuevo.
-        </p>
-      </div>
-
-      <!-- Spinner mientras cargan los perfiles -->
-      <div v-if="loadingPerfiles" class="row justify-center q-my-xl">
-        <q-spinner color="primary" size="50px" />
-      </div>
-
-      <!-- Cuadrícula de perfiles -->
-      <div v-else class="row justify-center q-col-gutter-lg">
-        <!-- Tarjeta de cada perfil existente -->
-        <div
-          v-for="perfil in perfiles"
-          :key="perfil"
-          class="col-12 col-sm-6 col-md-4 col-lg-3"
-        >
-          <q-card class="profile-card q-pa-md text-center shadow-2" @click="seleccionarPerfil(perfil)">
-            <q-card-section class="column items-center">
-              <q-avatar size="80px" class="profile-avatar-gradient q-mb-md">
-                {{ perfil.charAt(0).toUpperCase() }}
-              </q-avatar>
-              <div class="text-h6 text-bold text-grey-9">{{ perfil }}</div>
-              <div class="text-caption text-grey-6 q-mt-xs">Ver rutina diaria</div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- Tarjeta para crear nuevo perfil -->
-        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-          <q-card
-            class="profile-card new-profile-card q-pa-md text-center shadow-2"
-            @click="abrirCrearPerfil"
-          >
-            <q-card-section class="column items-center justify-center style-dashed" style="height: 100%; min-height: 140px;">
-              <q-icon name="person_add" size="44px" class="q-mb-md" />
-              <div class="text-h6 text-bold">Nuevo Perfil</div>
-              <div class="text-caption">Crear configuración</div>
-            </q-card-section>
-          </q-card>
-        </div>
-      </div>
-    </div>
+    <PerfilSelector
+      v-if="!nombreActivo"
+      :perfiles="perfiles"
+      :loading-perfiles="loadingPerfiles"
+      @seleccionar="seleccionarPerfil"
+      @crear-nuevo="abrirCrearPerfil"
+    />
 
     <!-- PANTALLA 2: DASHBOARD DE RUTINA DIARIA -->
     <div v-else>
@@ -61,84 +21,20 @@
               <strong>Objetivo principal:</strong> {{ form.objetivo }}
             </div>
           </div>
-
-
         </div>
       </div>
 
       <div class="row q-col-gutter-md">
         <!-- Barra lateral izquierda (Progreso, Estado del día, Historial) -->
         <div class="col-12 col-lg-4">
-          <!-- Tarjeta de progreso -->
-          <q-card class="shadow-3 progress-header">
-            <q-card-section>
-              <div class="text-h6 text-purple text-bold">Estado del día</div>
-              <div class="q-mt-md">
-                <div class="row items-center justify-between q-mb-xs">
-                  <span class="text-body2 text-grey-8">Actividades obligatorias</span>
-                  <span class="text-body2 text-bold">
-                    {{ progreso.comidasConsumidas }}/{{ progreso.totalComidas }}
-                  </span>
-                </div>
-                <q-linear-progress
-                  :value="progressValue"
-                  color="primary"
-                  track-color="grey-3"
-                  rounded
-                  size="14px"
-                />
-                <div class="text-caption text-grey-7 q-mt-xs">
-                  {{ progressText }}
-                </div>
-              </div>
-
-              <q-separator class="q-my-md" />
-
-              <div class="text-subtitle2 text-purple text-bold">Entrenamiento de hoy</div>
-              <div class="text-body2 text-grey-8 q-mt-sm">
-                {{ resumenEntrenamiento }}
-              </div>
-              <div class="text-caption text-grey-7 q-mt-xs">{{ resumenDia }}</div>
-            </q-card-section>
-          </q-card>
-
-          <!-- Tarjeta de historial -->
-          <q-card class="shadow-3 q-mt-md">
-            <q-card-section>
-              <div class="row items-center justify-between">
-                <div class="text-subtitle1 text-purple text-bold">
-                  Progreso de la semana
-                </div>
-                <q-btn
-                  flat
-                  dense
-                  icon="sync"
-                  color="primary"
-                  :loading="historyLoading"
-                  @click="cargarHistorial"
-                />
-              </div>
-
-              <div v-if="historyLoading" class="row justify-center q-py-md">
-                <q-spinner color="primary" size="32px" />
-              </div>
-              <div v-else-if="!historial.length" class="text-body2 text-grey-7 q-mt-sm">
-                Todavía no hay progreso registrado para los días anteriores.
-              </div>
-              <div v-else class="q-mt-sm">
-                <div
-                  v-for="item in historial"
-                  :key="item._id"
-                  class="row items-center justify-between q-py-xs border-bottom-soft"
-                >
-                  <span class="text-body2">{{ formatearFecha(item.fecha) }}</span>
-                  <span class="text-body2 text-bold">{{
-                    formatearPorcentaje(item.porcentajeComplecion)
-                  }}</span>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
+          <ProgresoDiarioCard
+            :progreso="progreso"
+            :resumen-entrenamiento="resumenEntrenamiento"
+            :resumen-dia="resumenDia"
+            :historial="historial"
+            :history-loading="historyLoading"
+            @refresh-history="cargarHistorial"
+          />
         </div>
 
         <!-- Columna derecha (Actividades de hoy) -->
@@ -183,88 +79,15 @@
                   :key="meal.key"
                   class="col-12 col-md-6"
                 >
-                  <q-card
-                    :class="[
-                      'meal-card',
-                      meal.consumido ? 'meal-card--done' : '',
-                    ]"
-                    bordered
-                  >
-                    <q-card-section>
-                      <div class="row items-start justify-between no-wrap">
-                        <div>
-                          <div class="text-subtitle1 text-purple text-bold">
-                            {{ meal.label }}
-                          </div>
-                          <div class="text-caption text-grey-7 q-mb-xs">
-                            {{ meal.helper }}
-                          </div>
-                        </div>
-                        <q-toggle
-                          :model-value="meal.consumido"
-                          color="positive"
-                          @update:model-value="
-                            (value) => marcarComida(meal.key, value)
-                          "
-                        />
-                      </div>
-
-                      <!-- SELECTOR DE OPCIONES PARA DESAYUNO Y MERIENDA -->
-                      <div v-if="meal.key === 'desayuno' || meal.key === 'merienda'" class="q-mb-md">
-                        <q-select
-                          v-model="selectedOptionModel[meal.key]"
-                          :options="opcionesComidas ? opcionesComidas[meal.key] : []"
-                          option-value="numero"
-                          option-label="titulo"
-                          emit-value
-                          map-options
-                          outlined
-                          dense
-                          label="Elegir qué vas a consumir"
-                          class="q-mt-xs"
-                          @update:model-value="(val) => cambiarOpcionComida(meal.key, val)"
-                        >
-                          <template v-slot:option="scope">
-                            <q-item v-bind="scope.itemProps">
-                              <q-item-section>
-                                <q-item-label class="text-bold text-purple">
-                                  {{ scope.opt.titulo }}
-                                </q-item-label>
-                                <q-item-label caption>
-                                  {{ scope.opt.descripcion }}
-                                </q-item-label>
-                                <q-item-label caption class="text-orange" v-if="scope.opt.calorias">
-                                  {{ scope.opt.calorias }} kcal
-                                </q-item-label>
-                              </q-item-section>
-                            </q-item>
-                          </template>
-                        </q-select>
-                      </div>
-
-                      <div class="text-body2 text-grey-9 q-mb-sm">
-                        {{ meal.descripcion || "Sin descripción disponible" }}
-                      </div>
-
-                      <q-list
-                        v-if="meal.items.length"
-                        dense
-                        class="bg-grey-1 rounded-borders q-pa-xs"
-                      >
-                        <q-item
-                          v-for="(item, index) in meal.items"
-                          :key="`${meal.key}-${index}`"
-                        >
-                          <q-item-section avatar>
-                            <q-icon name="restaurant" color="primary" />
-                          </q-item-section>
-                          <q-item-section>
-                            <q-item-label>{{ item }}</q-item-label>
-                          </q-item-section>
-                        </q-item>
-                      </q-list>
-                    </q-card-section>
-                  </q-card>
+                  <MealCard
+                    :meal="meal"
+                    :opciones-comidas="opcionesComidas"
+                    :recetas="recetas"
+                    :selected-option="selectedOptionModel[meal.key]"
+                    @marcar="(val) => marcarComida(meal.key, val)"
+                    @cambiar-opcion="(val) => cambiarOpcionComida(meal.key, val)"
+                    @vincular-receta="(val) => vincularRecetaAMeal(meal.key, val)"
+                  />
                 </div>
               </div>
             </q-card-section>
@@ -274,69 +97,14 @@
     </div>
 
     <!-- DIÁLOGO PARA CREAR O EDITAR PERFIL DE USUARIO -->
-    <q-dialog v-model="dialogNuevoPerfil" persistent>
-      <q-card style="min-width: 350px; border-radius: 16px;" class="q-pa-md">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6 text-purple text-bold">
-            {{ nombreActivo ? "Configurar Perfil" : "Crear Perfil Personal" }}
-          </div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
-
-        <q-card-section class="q-pt-md">
-          <q-form @submit.prevent="guardarPerfilGeneral" class="q-gutter-md">
-            <q-input
-              v-model="nuevoPerfilForm.nombre"
-              outlined
-              dense
-              label="Tu nombre"
-              :rules="[(val) => !!val || 'El nombre es obligatorio']"
-              :disable="!!nombreActivo"
-              hint="El nombre te identificará para entrar siempre a tu rutina."
-            />
-
-            <q-input
-              v-model="nuevoPerfilForm.objetivo"
-              outlined
-              dense
-              label="Objetivo"
-              placeholder="Bajar grasa, ganar músculo, etc."
-            />
-
-            <q-select
-              v-model="nuevoPerfilForm.diasEntrenamiento"
-              :options="diasSemanaOptions"
-              multiple
-              use-chips
-              outlined
-              dense
-              label="Días de gimnasio"
-            />
-
-            <q-select
-              v-model="nuevoPerfilForm.horaEntrenamiento"
-              :options="horaEntrenamientoOptions"
-              emit-value
-              map-options
-              outlined
-              dense
-              label="Hora preferida de entrenamiento"
-            />
-
-            <div class="row justify-end q-mt-lg q-gutter-sm">
-              <q-btn label="Cancelar" color="grey" flat v-close-popup />
-              <q-btn
-                :label="nombreActivo ? 'Guardar Cambios' : 'Crear Perfil'"
-                color="primary"
-                type="submit"
-                :loading="guardandoPerfil"
-              />
-            </div>
-          </q-form>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+    <PerfilDialog
+      v-model="dialogNuevoPerfil"
+      :perfil="perfilParaDialog"
+      :is-edit="!!nombreActivo"
+      :loading="guardandoPerfil"
+      :perfiles-existentes="perfiles"
+      @save="guardarPerfilGeneral"
+    />
 
     <!-- MENU FLOTANTE DE OPCIONES DE PERFIL -->
     <q-page-sticky v-if="nombreActivo" position="bottom-right" :offset="[18, 18]">
@@ -373,6 +141,12 @@ import { computed, ref, onMounted } from "vue";
 import { useQuasar } from "quasar";
 import { RUTINA_API_URL } from "src/config/api";
 
+// Importar componentes modulares
+import PerfilSelector from "src/components/PerfilSelector.vue";
+import PerfilDialog from "src/components/PerfilDialog.vue";
+import ProgresoDiarioCard from "src/components/ProgresoDiarioCard.vue";
+import MealCard from "src/components/MealCard.vue";
+
 const $q = useQuasar();
 
 // State principal
@@ -406,7 +180,7 @@ const loadingPerfiles = ref(false);
 // Crear/Editar Perfil
 const dialogNuevoPerfil = ref(false);
 const guardandoPerfil = ref(false);
-const nuevoPerfilForm = ref({
+const perfilParaDialog = ref({
   nombre: "",
   diasEntrenamiento: [],
   horaEntrenamiento: "ninguno",
@@ -420,28 +194,22 @@ const selectedOptionModel = ref({
   merienda: 1,
 });
 
+const recetas = ref([]);
+const selectedRecipeModel = ref({
+  desayuno: null,
+  colacion1: null,
+  almuerzo: null,
+  merienda: null,
+  colacion2: null,
+  cena: null,
+});
+
 const todayLabel = new Date().toLocaleDateString("es-ES", {
   weekday: "long",
   day: "2-digit",
   month: "long",
   year: "numeric",
 });
-
-const diasSemanaOptions = [
-  "lunes",
-  "martes",
-  "miercoles",
-  "jueves",
-  "viernes",
-  "sabado",
-  "domingo",
-];
-
-const horaEntrenamientoOptions = [
-  { label: "Antes de las 17 hs", value: "antes17" },
-  { label: "Después de las 18 hs", value: "despues18" },
-  { label: "No entrena hoy", value: "ninguno" },
-];
 
 const mealMeta = {
   desayuno: { label: "Desayuno", helper: "Primera comida del día" },
@@ -466,6 +234,8 @@ const meals = computed(() => {
         meal.descripcion || meal.grupoAlimentos?.proteina?.tipo || "",
       items: buildMealItems(key, meal),
       consumido: Boolean(meal.consumido),
+      recetaNombre: meal.recetaNombre || null,
+      recetaId: meal.recetaId || null,
     };
   });
 
@@ -484,16 +254,6 @@ const meals = computed(() => {
   return list;
 });
 
-const progressValue = computed(() => {
-  const percent = Number(progreso.value.porcentajeComplecion || 0);
-  return Math.max(0, Math.min(1, percent / 100));
-});
-
-const progressText = computed(() => {
-  const percent = Number(progreso.value.porcentajeComplecion || 0).toFixed(0);
-  return `${progreso.value.comidasConsumidas}/${progreso.value.totalComidas} completados (${percent}%)`;
-});
-
 const getTodayISO = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -503,6 +263,19 @@ const getTodayISO = () => {
 };
 
 const buildMealItems = (key, meal) => {
+  if (meal.recetaNombre) {
+    const found = recetas.value.find(
+      (r) =>
+        r._id === meal.recetaId ||
+        r.nombreReceta.toLowerCase() === meal.recetaNombre.toLowerCase()
+    );
+    if (found && found.ingredientes) {
+      return found.ingredientes.map(
+        (i) => `${i.cantidad} ${i.unidad || "ud"} de ${i.ingrediente}`
+      );
+    }
+  }
+
   if (meal.grupoAlimentos) {
     const items = [];
     if (
@@ -527,15 +300,6 @@ const buildMealItems = (key, meal) => {
 
   return [];
 };
-
-const formatearFecha = (value) =>
-  new Date(value).toLocaleDateString("es-ES", {
-    month: "short",
-    day: "2-digit",
-    timeZone: "UTC",
-  });
-
-const formatearPorcentaje = (value) => `${Number(value || 0).toFixed(0)}%`;
 
 const calcularResumen = (data) => {
   resumenEntrenamiento.value = data?.esEntrenamiento
@@ -620,6 +384,7 @@ const seleccionarPerfil = async (nombre) => {
   nombreActivo.value = nombre;
   await cargarConfigPerfil(nombre);
   await cargarRutina();
+  await cargarHistorial();
 };
 
 const cerrarSesionPerfil = () => {
@@ -634,7 +399,7 @@ const cerrarSesionPerfil = () => {
 };
 
 const abrirCrearPerfil = () => {
-  nuevoPerfilForm.value = {
+  perfilParaDialog.value = {
     nombre: "",
     diasEntrenamiento: [],
     horaEntrenamiento: "ninguno",
@@ -644,7 +409,7 @@ const abrirCrearPerfil = () => {
 };
 
 const abrirEditarPerfil = () => {
-  nuevoPerfilForm.value = {
+  perfilParaDialog.value = {
     nombre: nombreActivo.value,
     diasEntrenamiento: form.value.diasEntrenamiento,
     horaEntrenamiento: form.value.horaEntrenamiento,
@@ -653,35 +418,18 @@ const abrirEditarPerfil = () => {
   dialogNuevoPerfil.value = true;
 };
 
-const guardarPerfilGeneral = async () => {
-  const nombre = nuevoPerfilForm.value.nombre.trim();
-  if (!nombre) return;
-
-  // Si se está creando un perfil nuevo, verificar que el nombre no exista
-  if (!nombreActivo.value) {
-    const existe = perfiles.value.some(
-      (p) => p.toLowerCase() === nombre.toLowerCase()
-    );
-    if (existe) {
-      $q.notify({
-        type: "warning",
-        message: `El nombre "${nombre}" ya está en uso. Por favor, elegí otro nombre.`,
-      });
-      return;
-    }
-  }
-
+const guardarPerfilGeneral = async (formData) => {
+  const nombre = formData.nombre;
   guardandoPerfil.value = true;
   try {
-    // 1. Guardar la configuración general
     const responseConfig = await fetch(`${RUTINA_API_URL}/rutina/config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         usuarioId: nombre,
-        objetivos: nuevoPerfilForm.value.objetivo,
-        diasEntrenamiento: nuevoPerfilForm.value.diasEntrenamiento,
-        horaPreferidaEntrenamiento: nuevoPerfilForm.value.horaEntrenamiento,
+        objetivos: formData.objetivo,
+        diasEntrenamiento: formData.diasEntrenamiento,
+        horaPreferidaEntrenamiento: formData.horaEntrenamiento,
       }),
     });
 
@@ -694,9 +442,9 @@ const guardarPerfilGeneral = async () => {
     
     // Actualizar estados locales del perfil activo
     form.value.nombre = nombre;
-    form.value.objetivo = nuevoPerfilForm.value.objetivo;
-    form.value.diasEntrenamiento = nuevoPerfilForm.value.diasEntrenamiento;
-    form.value.horaEntrenamiento = nuevoPerfilForm.value.horaEntrenamiento;
+    form.value.objetivo = formData.objetivo;
+    form.value.diasEntrenamiento = formData.diasEntrenamiento;
+    form.value.horaEntrenamiento = formData.horaEntrenamiento;
     nombreActivo.value = nombre;
 
     dialogNuevoPerfil.value = false;
@@ -733,9 +481,16 @@ const cargarRutina = async () => {
     selectedOptionModel.value.desayuno = data.data.desayuno?.opcion || 1;
     selectedOptionModel.value.merienda = data.data.merienda?.opcion || 1;
 
+    // Sincronizar recetas vinculadas
+    selectedRecipeModel.value.desayuno = data.data.desayuno?.recetaNombre || null;
+    selectedRecipeModel.value.colacion1 = data.data.colacion1?.recetaNombre || null;
+    selectedRecipeModel.value.almuerzo = data.data.almuerzo?.recetaNombre || null;
+    selectedRecipeModel.value.merienda = data.data.merienda?.recetaNombre || null;
+    selectedRecipeModel.value.colacion2 = data.data.colacion2?.recetaNombre || null;
+    selectedRecipeModel.value.cena = data.data.cena?.recetaNombre || null;
+
     recalcularProgreso(data.data);
     calcularResumen(data.data);
-    await cargarHistorial();
   } catch (error) {
     rutina.value = null;
     errorRutina.value = error.message || "No se pudo cargar la rutina";
@@ -810,7 +565,6 @@ const cambiarOpcionComida = async (tipoComida, opcionNumero) => {
       type: "negative",
       message: error.message || "No se pudo actualizar la opción",
     });
-    // Rollback visual
     selectedOptionModel.value[tipoComida] = rutina.value[tipoComida]?.opcion || 1;
   }
 };
@@ -839,9 +593,66 @@ const cargarHistorial = async () => {
   }
 };
 
+const cargarRecetas = async () => {
+  try {
+    const response = await fetch(`${RUTINA_API_URL}/recetas/todas`);
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      recetas.value = data;
+    }
+  } catch (error) {
+    console.error("Error al cargar recetas:", error);
+  }
+};
+
+const vincularRecetaAMeal = async (tipoComida, recetaNombre) => {
+  if (!rutina.value?._id) return;
+
+  let recetaId = null;
+  if (recetaNombre) {
+    const found = recetas.value.find(
+      (r) => r.nombreReceta.toLowerCase() === recetaNombre.toLowerCase()
+    );
+    if (found) recetaId = found._id;
+  }
+
+  try {
+    const response = await fetch(
+      `${RUTINA_API_URL}/rutina/${rutina.value._id}/vincular-receta`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipoComida, recetaId, recetaNombre }),
+      }
+    );
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "No se pudo vincular la receta");
+    }
+
+    rutina.value = data.data;
+    selectedRecipeModel.value[tipoComida] = recetaNombre;
+    recalcularProgreso(data.data);
+
+    $q.notify({
+      type: "positive",
+      message: recetaNombre
+        ? `Receta '${recetaNombre}' vinculada a ${mealMeta[tipoComida]?.label || tipoComida}`
+        : `Receta desvinculada de ${mealMeta[tipoComida]?.label || tipoComida}`,
+    });
+  } catch (error) {
+    $q.notify({
+      type: "negative",
+      message: error.message || "Error al vincular la receta",
+    });
+    selectedRecipeModel.value[tipoComida] = rutina.value[tipoComida]?.recetaNombre || null;
+  }
+};
+
 // Lifecycle
 onMounted(() => {
   cargarPerfiles();
+  cargarRecetas();
 });
 </script>
 
@@ -856,42 +667,6 @@ export default {
   min-height: 100%;
 }
 
-.profile-selection-container {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.profile-card {
-  cursor: pointer;
-  border-radius: 16px;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(138, 90, 157, 0.1);
-  background: #ffffff;
-}
-
-.profile-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 15px 30px rgba(138, 90, 157, 0.15);
-  border-color: #8a5a9d;
-}
-
-.profile-avatar-gradient {
-  background: linear-gradient(135deg, #8a5a9d 0%, #c18dfd 100%);
-  color: white;
-  font-weight: bold;
-}
-
-.new-profile-card {
-  border: 2px dashed rgba(138, 90, 157, 0.3);
-  background: rgba(248, 241, 251, 0.5);
-  color: #8a5a9d;
-}
-
-.new-profile-card:hover {
-  border-color: #8a5a9d;
-  background: rgba(248, 241, 251, 0.8);
-}
-
 .hero {
   border-radius: 18px;
   background: linear-gradient(135deg, #f8f1fb 0%, #eef7ff 100%);
@@ -902,44 +677,5 @@ export default {
   border-radius: 16px;
   background: linear-gradient(135deg, #fbf7ff 0%, #f0f7ff 100%);
   border: 1px solid rgba(138, 90, 157, 0.15);
-}
-
-.progress-header {
-  border-radius: 16px;
-  background: #ffffff;
-  border-left: 5px solid #8a5a9d;
-}
-
-.meal-card {
-  border-radius: 16px;
-  background: #ffffff;
-  transition: all 0.3s ease;
-}
-
-.meal-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
-}
-
-.meal-card--done {
-  border-color: rgba(76, 175, 80, 0.3);
-  background: linear-gradient(180deg, #f1fbf3 0%, #ffffff 100%);
-  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.05);
-}
-
-.border-bottom-soft {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.animated-btn {
-  transition: all 0.2s ease;
-}
-
-.animated-btn:hover {
-  transform: scale(1.03);
-}
-
-.style-dashed {
-  border-radius: 12px;
 }
 </style>

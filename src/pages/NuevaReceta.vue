@@ -36,6 +36,18 @@
       </q-form>
       <TablaDeIngredientes :ingredientes="ingredientes" :editable="true" />
       <div class="q-mt-md">
+        <h6 class="text-bold text-purple q-ma-xs">Categoría (Tipo de alimento):</h6>
+        <q-select
+          v-model="tipoAlimento"
+          :options="tipoAlimentoOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Seleccionar categoría de la receta"
+        />
+      </div>
+      <div class="q-mt-md">
         <h6 class="text-bold text-purple q-ma-xs">Descripción:</h6>
         <q-input v-model="descripcion" type="textarea" filled />
       </div>
@@ -64,6 +76,16 @@ const descripcion = ref("");
 const receta = ref();
 const ingredientes = ref([]);
 const loading = ref(false);
+
+const tipoAlimento = ref("");
+const tipoAlimentoOptions = [
+  { label: "Proteína", value: "proteina" },
+  { label: "Verdura", value: "verdura" },
+  { label: "Carbohidrato", value: "carbohidrato" },
+  { label: "Mixto (Proteína + Verdura)", value: "mixto" },
+  { label: "Desayuno / Merienda", value: "desayuno_merienda" },
+  { label: "Sin especificar", value: "" },
+];
 
 const agregarIngrediente = () => {
   if (
@@ -114,6 +136,7 @@ const crearReceta = async () => {
       nombreReceta: recetaName.value.trim(),
       ingredientes: ingredientes.value,
       descripcion: descripcion.value,
+      tipoAlimento: tipoAlimento.value,
     };
     try {
       fetch(`${API_URL}/recetas`, {
@@ -129,6 +152,7 @@ const crearReceta = async () => {
           descripcion.value = "";
           recetaName.value = null;
           ingredientes.value = [];
+          tipoAlimento.value = "";
         })
         .catch((error) => {
           console.error("Error:", error);
