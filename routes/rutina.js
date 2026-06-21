@@ -19,8 +19,8 @@ const opcionesDesayuno = {
     calorias: 220,
   },
   3: {
-    titulo: "Café con omelet",
-    descripcion: "Café o mate + Omelet (1 huevo + queso port salut)",
+    titulo: "Infusión con omelet",
+    descripcion: "Infusión o café o mate + Omelet (1 huevo + queso port salut)",
     calorias: 180,
   },
   4: {
@@ -29,7 +29,7 @@ const opcionesDesayuno = {
     calorias: 210,
   },
   5: {
-    titulo: "Café negro con pan nube",
+    titulo: "Infusión con pan nube",
     descripcion: "Café/mate/té + Pan nube + queso/mermelada/jamón",
     calorias: 190,
   },
@@ -52,17 +52,17 @@ const opcionesMerienda = {
     calorias: 200,
   },
   3: {
-    titulo: "Café cortado con budín integral",
+    titulo: "Infusión con budín integral",
     descripcion: "Café/mate/té cortado con leche + 1-2 rebanada budín",
     calorias: 240,
   },
   4: {
-    titulo: "Café con leche con tostadas untadas",
+    titulo: "Infusión con tostadas untadas",
     descripcion: "Café/mate/té + 2 tostadas + queso descremado/mermelada light",
     calorias: 210,
   },
   5: {
-    titulo: "Café cortado con pan nube",
+    titulo: "Infusión con pan nube",
     descripcion: "Café/mate/té + ¾ taza leche + pan nube untado",
     calorias: 220,
   },
