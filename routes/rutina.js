@@ -2,6 +2,7 @@ import express from "express";
 import { ComidaDiaria } from "../models/ComidaDiaria.js";
 import { ProgresoDiario } from "../models/ProgresoDiario.js";
 import { Rutina } from "../models/Rutina.js";
+import { Receta } from "../models/Receta.js";
 
 const router = express.Router();
 
@@ -137,6 +138,47 @@ const distribucionSemanal = {
   domingo: { almuerzo: "rojo", cena: "rojo" },
 };
 
+const obtenerCarbsEntrenamiento = (diaSemana, horaEntrenamiento, tipoComida) => {
+  if (horaEntrenamiento === "ninguno") return undefined;
+  
+  const distribucion = distribucionSemanal[diaSemana] || {};
+  const tipoProteina = distribucion[tipoComida];
+  const esCarne = tipoProteina === "rojo" || tipoProteina === "mixto";
+  
+  if (tipoComida === "almuerzo" && horaEntrenamiento === "antes17") {
+    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral/choclo, 1 porción tarta (pollo y espinaca), 1 cuadradito pastel de papas, 1 hamburguesa vegana, 1 papa o 1 batata.";
+    if (esCarne) {
+      base += " Opcional: Milanesas al horno (reemplaza carbohidratos extras) o NO consumir carne hoy (comida diferente).";
+    } else {
+      base += " Opcional: NO consumir huevo hoy (comida diferente).";
+    }
+    return base;
+  }
+  
+  if (tipoComida === "cena" && horaEntrenamiento === "despues18") {
+    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral, o 1 hamburguesa vegana.";
+    if (esCarne) {
+      base += " Opcional: Milanesas al horno (reemplaza carbohidratos extras) o NO consumir carne hoy (comida diferente).";
+    } else {
+      base += " Opcional: NO consumir huevo hoy (comida diferente).";
+    }
+    return base;
+  }
+  
+  return undefined;
+};
+
+const obtenerProteinaPorDefecto = (tipoDist) => {
+  if (tipoDist === "amarillo") {
+    return { tipo: "huevo", cantidad: "Hasta 3 claras" };
+  } else if (tipoDist === "rojo") {
+    return { tipo: "carne", cantidad: "160-180gr" };
+  } else if (tipoDist === "mixto") {
+    return { tipo: "mixto", cantidad: "Flexible (Carne 160-180g o claras)" };
+  }
+  return { tipo: "carne", cantidad: "160-180gr" };
+};
+
 const calcularProgreso = (comidaDiaria) => {
   let totalComidas = 0;
   let comidasConsumidas = 0;
@@ -256,7 +298,25 @@ router.post("/config", async (req, res) => {
       const esEntrenamientoHoy = (diasEntrenamiento || []).includes(diaSemana);
       comidaDiaria.esEntrenamiento = esEntrenamientoHoy;
       comidaDiaria.entrenamiento = crearEntrenamiento(esEntrenamientoHoy);
-      comidaDiaria.horaEntrenamiento = esEntrenamientoHoy ? (horaPreferidaEntrenamiento || "ninguno") : "ninguno";
+      const horaEntrenamientoHoy = esEntrenamientoHoy ? (horaPreferidaEntrenamiento || "ninguno") : "ninguno";
+      comidaDiaria.horaEntrenamiento = horaEntrenamientoHoy;
+      
+      // Actualizar carbohidratos adicionales
+      if (comidaDiaria.almuerzo && comidaDiaria.almuerzo.grupoAlimentos) {
+        comidaDiaria.almuerzo.grupoAlimentos.adicional = obtenerCarbsEntrenamiento(
+          diaSemana,
+          horaEntrenamientoHoy,
+          "almuerzo"
+        );
+      }
+      if (comidaDiaria.cena && comidaDiaria.cena.grupoAlimentos) {
+        comidaDiaria.cena.grupoAlimentos.adicional = obtenerCarbsEntrenamiento(
+          diaSemana,
+          horaEntrenamientoHoy,
+          "cena"
+        );
+      }
+      
       await comidaDiaria.save();
 
       // Recalcular progreso
@@ -374,6 +434,14 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
         horaEntrenamientoHoy = esEntrenamientoHoy ? (configGeneral.horaPreferidaEntrenamiento || "ninguno") : "ninguno";
       }
 
+      // Definir carbohidratos extras de entrenamiento según el horario y día
+      const almuerzoAdicional = obtenerCarbsEntrenamiento(diaSemana, horaEntrenamientoHoy, "almuerzo");
+      const cenaAdicional = obtenerCarbsEntrenamiento(diaSemana, horaEntrenamientoHoy, "cena");
+
+      const distHoy = distribucionSemanal[diaSemana] || { almuerzo: "rojo", cena: "amarillo" };
+      const protAlmuerzo = obtenerProteinaPorDefecto(distHoy.almuerzo);
+      const protCena = obtenerProteinaPorDefecto(distHoy.cena);
+
       comidaDiaria = new ComidaDiaria({
         usuarioId,
         fecha: fechaObj,
@@ -401,17 +469,19 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
         },
         almuerzo: {
           grupoAlimentos: {
-            proteina: { tipo: "carne", cantidad: "160-180gr" },
+            proteina: protAlmuerzo,
             verdura: "Hoja fresca libre",
+            adicional: almuerzoAdicional,
           },
-          descripcion: "Selecciona una opción de proteína + verdura",
+          descripcion: distHoy.almuerzo === "mixto" ? "Opción flexible (carne o huevo) + verdura" : `${protAlmuerzo.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`,
         },
         cena: {
           grupoAlimentos: {
-            proteina: { tipo: "huevo", cantidad: "Hasta 3 claras" },
+            proteina: protCena,
             verdura: "Hoja fresca libre",
+            adicional: cenaAdicional,
           },
-          descripcion: "Claras de huevo + verdura",
+          descripcion: `${protCena.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`,
         },
       });
 
@@ -465,20 +535,29 @@ router.post("/", async (req, res) => {
       "sabado",
     ][fechaObj.getUTCDay()];
 
-    let comidaDiaria = await ComidaDiaria.findOneAndUpdate(
-      {
-        usuarioId,
-        fecha: {
-          $gte: new Date(fecha),
-          $lt: new Date(new Date(fecha).getTime() + 24 * 60 * 60 * 1000),
-        },
+    let comidaDiaria = await ComidaDiaria.findOne({
+      usuarioId,
+      fecha: {
+        $gte: new Date(fecha),
+        $lt: new Date(new Date(fecha).getTime() + 24 * 60 * 60 * 1000),
       },
-      {
+    });
+
+    const horaEntrenamientoReal = esEntrenamiento ? (horaEntrenamiento || "ninguno") : "ninguno";
+    const almuerzoAdicional = obtenerCarbsEntrenamiento(diaSemana, horaEntrenamientoReal, "almuerzo");
+    const cenaAdicional = obtenerCarbsEntrenamiento(diaSemana, horaEntrenamientoReal, "cena");
+
+    if (!comidaDiaria) {
+      const distHoy = distribucionSemanal[diaSemana] || { almuerzo: "rojo", cena: "amarillo" };
+      const protAlmuerzo = obtenerProteinaPorDefecto(distHoy.almuerzo);
+      const protCena = obtenerProteinaPorDefecto(distHoy.cena);
+
+      comidaDiaria = new ComidaDiaria({
         usuarioId,
         fecha: fechaObj,
         diaSemana,
         esEntrenamiento,
-        horaEntrenamiento,
+        horaEntrenamiento: horaEntrenamientoReal,
         entrenamiento: crearEntrenamiento(esEntrenamiento),
         desayuno: {
           opcion: desayunoOpcion || 1,
@@ -488,31 +567,68 @@ router.post("/", async (req, res) => {
           opcion: meriendaOpcion || 1,
           descripcion: opcionesMerienda[meriendaOpcion || 1].descripcion,
         },
-        colacion1:
-          colacion1 ||
-          (incluirColacion1 && colacion1Opcion
-            ? {
-                opcion: colacion1Opcion,
-                descripcion: colacion1Opciones[colacion1Opcion],
-                opcional: false,
-              }
-            : {
-                opcional: true,
-              }),
-        colacion2:
-          colacion2 ||
-          (incluirColacion2 && colacion2Opcion
-            ? {
-                opcion: colacion2Opcion,
-                descripcion: colacion2Opciones[colacion2Opcion],
-                opcional: false,
-              }
-            : {
-                opcional: true,
-              }),
-      },
-      { upsert: true, new: true }
-    );
+        colacion1: colacion1 || (incluirColacion1 && colacion1Opcion
+          ? { opcion: colacion1Opcion, descripcion: colacion1Opciones[colacion1Opcion], opcional: false }
+          : { opcional: true }),
+        colacion2: colacion2 || (incluirColacion2 && colacion2Opcion
+          ? { opcion: colacion2Opcion, descripcion: colacion2Opciones[colacion2Opcion], opcional: false }
+          : { opcional: true }),
+        almuerzo: {
+          grupoAlimentos: {
+            proteina: protAlmuerzo,
+            verdura: "Hoja fresca libre",
+            adicional: almuerzoAdicional,
+          },
+          descripcion: distHoy.almuerzo === "mixto" ? "Opción flexible (carne o huevo) + verdura" : `${protAlmuerzo.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`,
+        },
+        cena: {
+          grupoAlimentos: {
+            proteina: protCena,
+            verdura: "Hoja fresca libre",
+            adicional: cenaAdicional,
+          },
+          descripcion: `${protCena.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`,
+        },
+      });
+      await comidaDiaria.save();
+    } else {
+      comidaDiaria.esEntrenamiento = esEntrenamiento;
+      comidaDiaria.horaEntrenamiento = horaEntrenamientoReal;
+      comidaDiaria.entrenamiento = crearEntrenamiento(esEntrenamiento);
+      comidaDiaria.desayuno = {
+        opcion: desayunoOpcion || 1,
+        descripcion: opcionesDesayuno[desayunoOpcion || 1].descripcion,
+      };
+      comidaDiaria.merienda = {
+        opcion: meriendaOpcion || 1,
+        descripcion: opcionesMerienda[meriendaOpcion || 1].descripcion,
+      };
+      if (colacion1) {
+        comidaDiaria.colacion1 = colacion1;
+      } else if (incluirColacion1 && colacion1Opcion) {
+        comidaDiaria.colacion1 = { opcion: colacion1Opcion, descripcion: colacion1Opciones[colacion1Opcion], opcional: false };
+      } else {
+        comidaDiaria.colacion1 = { opcional: true };
+      }
+
+      if (colacion2) {
+        comidaDiaria.colacion2 = colacion2;
+      } else if (incluirColacion2 && colacion2Opcion) {
+        comidaDiaria.colacion2 = { opcion: colacion2Opcion, descripcion: colacion2Opciones[colacion2Opcion], opcional: false };
+      } else {
+        comidaDiaria.colacion2 = { opcional: true };
+      }
+
+      // Actualizar carbohidratos adicionales
+      if (comidaDiaria.almuerzo && comidaDiaria.almuerzo.grupoAlimentos) {
+        comidaDiaria.almuerzo.grupoAlimentos.adicional = almuerzoAdicional;
+      }
+      if (comidaDiaria.cena && comidaDiaria.cena.grupoAlimentos) {
+        comidaDiaria.cena.grupoAlimentos.adicional = cenaAdicional;
+      }
+      
+      await comidaDiaria.save();
+    }
 
     res.json({
       success: true,
@@ -699,6 +815,76 @@ router.patch("/:id/actualizar-opcion", async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar opción de comida:", error);
     res.status(500).json({ success: false, error: "Error al actualizar la opción" });
+  }
+});
+
+// PATCH: Vincular una receta a una comida y actualizar la descripción
+router.patch("/:id/vincular-receta", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipoComida, recetaId, recetaNombre } = req.body;
+
+    const validComidas = ["desayuno", "colacion1", "almuerzo", "merienda", "colacion2", "cena"];
+    if (!validComidas.includes(tipoComida)) {
+      return res.status(400).json({ success: false, error: "Tipo de comida no válido" });
+    }
+
+    const actualizacion = {
+      [`${tipoComida}.recetaId`]: recetaId || null,
+      [`${tipoComida}.recetaNombre`]: recetaNombre || null,
+      updatedAt: new Date(),
+    };
+
+    if (recetaNombre) {
+      actualizacion[`${tipoComida}.descripcion`] = recetaNombre;
+    } else {
+      // Si desvinculamos, restauramos la descripción por defecto según la comida
+      if (tipoComida === "desayuno") {
+        actualizacion[`${tipoComida}.descripcion`] = opcionesDesayuno[1].descripcion;
+        actualizacion[`${tipoComida}.opcion`] = 1;
+      } else if (tipoComida === "merienda") {
+        actualizacion[`${tipoComida}.descripcion`] = opcionesMerienda[1].descripcion;
+        actualizacion[`${tipoComida}.opcion`] = 1;
+      } else if (tipoComida === "colacion1") {
+        actualizacion[`${tipoComida}.descripcion`] = colacion1Opciones[1];
+        actualizacion[`${tipoComida}.opcion`] = 1;
+      } else if (tipoComida === "colacion2") {
+        actualizacion[`${tipoComida}.descripcion`] = colacion2Opciones[1];
+        actualizacion[`${tipoComida}.opcion`] = 1;
+      } else if (tipoComida === "almuerzo" || tipoComida === "cena") {
+        // Buscar el día para saber qué día de la semana es y restaurar la descripción correcta
+        const cd = await ComidaDiaria.findById(id);
+        if (cd) {
+          const distHoy = distribucionSemanal[cd.diaSemana] || { almuerzo: "rojo", cena: "amarillo" };
+          if (tipoComida === "almuerzo") {
+            const protAlmuerzo = obtenerProteinaPorDefecto(distHoy.almuerzo);
+            actualizacion[`${tipoComida}.descripcion`] = distHoy.almuerzo === "mixto" ? "Opción flexible (carne o huevo) + verdura" : `${protAlmuerzo.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`;
+          } else {
+            const protCena = obtenerProteinaPorDefecto(distHoy.cena);
+            actualizacion[`${tipoComida}.descripcion`] = `${protCena.tipo === "carne" ? "Carne" : "Claras de huevo"} + verdura`;
+          }
+        } else {
+          actualizacion[`${tipoComida}.descripcion`] = tipoComida === "almuerzo" ? "Carne + verdura" : "Claras de huevo + verdura";
+        }
+      }
+    }
+
+    const comidaDiaria = await ComidaDiaria.findByIdAndUpdate(id, actualizacion, {
+      new: true,
+    });
+
+    if (!comidaDiaria) {
+      return res.status(404).json({ success: false, error: "Rutina no encontrada" });
+    }
+
+    res.json({
+      success: true,
+      message: recetaNombre ? `Receta '${recetaNombre}' vinculada correctamente` : "Receta desvinculada",
+      data: comidaDiaria,
+    });
+  } catch (error) {
+    console.error("Error al vincular receta:", error);
+    res.status(500).json({ success: false, error: "Error al vincular la receta" });
   }
 });
 

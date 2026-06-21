@@ -47,6 +47,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       type: Boolean,
       default: false,
     },
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   colacion1: {
     opcion: Number,
@@ -59,6 +64,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       type: Boolean,
       default: true,
     },
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   almuerzo: {
     grupoAlimentos: {
@@ -74,6 +84,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       default: false,
     },
     descripcion: String,
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   merienda: {
     opcion: Number,
@@ -82,6 +97,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       type: Boolean,
       default: false,
     },
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   colacion2: {
     opcion: Number,
@@ -94,6 +114,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       type: Boolean,
       default: true,
     },
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   cena: {
     grupoAlimentos: {
@@ -108,6 +133,11 @@ const ComidaDiariaSchema = new mongoose.Schema({
       default: false,
     },
     descripcion: String,
+    recetaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Receta",
+    },
+    recetaNombre: String,
   },
   notasUsuario: String,
   calorias: Number,

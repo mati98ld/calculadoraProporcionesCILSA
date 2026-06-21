@@ -30,5 +30,10 @@ const RecetaSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  tipoAlimento: {
+    type: String,
+    enum: ["proteina", "verdura", "carbohidrato", "mixto", "desayuno_merienda", ""],
+    default: "",
+  },
 });
 export const Receta = mongoose.model("Receta", RecetaSchema);
