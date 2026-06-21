@@ -148,19 +148,19 @@ const obtenerCarbsEntrenamiento = (diaSemana, horaEntrenamiento, tipoComida) => 
   if (tipoComida === "almuerzo" && horaEntrenamiento === "antes17") {
     let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral/choclo, 1 porción tarta (pollo y espinaca), 1 cuadradito pastel de papas, 1 hamburguesa vegana, 1 papa o 1 batata.";
     if (esCarne) {
-      base += " Opcional: Milanesas al horno (reemplaza carbohidratos extras) o NO consumir carne hoy (comida diferente).";
+      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir carne hoy.";
     } else {
-      base += " Opcional: NO consumir huevo hoy (comida diferente).";
+      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir huevo hoy.";
     }
     return base;
   }
 
   if (tipoComida === "cena" && horaEntrenamiento === "despues18") {
-    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral, o 1 hamburguesa vegana.";
+    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral/choclo, 1 porción tarta (pollo y espinaca), 1 cuadradito pastel de papas, 1 hamburguesa vegana, 1 papa o 1 batata.";
     if (esCarne) {
-      base += " Opcional: Milanesas al horno (reemplaza carbohidratos extras) o NO consumir carne hoy (comida diferente).";
+      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir carne hoy.";
     } else {
-      base += " Opcional: NO consumir huevo hoy (comida diferente).";
+      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir huevo hoy.";
     }
     return base;
   }
