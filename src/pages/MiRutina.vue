@@ -494,7 +494,13 @@ const progressText = computed(() => {
   return `${progreso.value.comidasConsumidas}/${progreso.value.totalComidas} completados (${percent}%)`;
 });
 
-const getTodayISO = () => new Date().toISOString().split("T")[0];
+const getTodayISO = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const buildMealItems = (key, meal) => {
   if (meal.grupoAlimentos) {
@@ -526,6 +532,7 @@ const formatearFecha = (value) =>
   new Date(value).toLocaleDateString("es-ES", {
     month: "short",
     day: "2-digit",
+    timeZone: "UTC",
   });
 
 const formatearPorcentaje = (value) => `${Number(value || 0).toFixed(0)}%`;
