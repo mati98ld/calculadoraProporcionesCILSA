@@ -127,6 +127,7 @@ const ComidaDiariaSchema = new mongoose.Schema({
         cantidad: String,
       },
       verdura: String,
+      adicional: String,
     },
     consumido: {
       type: Boolean,
