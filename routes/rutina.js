@@ -833,7 +833,7 @@ router.patch("/:id/marcar-comida", async (req, res) => {
 router.patch("/:id/actualizar-opcion", async (req, res) => {
   try {
     const { id } = req.params;
-    const { tipoComida, opcion } = req.body; // tipoComida: "desayuno" | "merienda", opcion: número
+    const { tipoComida, opcion } = req.body; // tipoComida: "desayuno" | "merienda" | "colacion1" | "colacion2", opcion: número
 
     let descripcion = "";
     if (tipoComida === "desayuno") {
@@ -846,6 +846,12 @@ router.patch("/:id/actualizar-opcion", async (req, res) => {
         return res.status(400).json({ success: false, error: "Opción de merienda inválida" });
       }
       descripcion = opcionesMerienda[opcion].descripcion;
+    } else if (tipoComida === "colacion1" || tipoComida === "colacion2") {
+      const catalogo = tipoComida === "colacion1" ? colacion1Opciones : colacion2Opciones;
+      if (!catalogo[opcion]) {
+        return res.status(400).json({ success: false, error: "Opción de colación inválida" });
+      }
+      descripcion = catalogo[opcion];
     } else {
       return res.status(400).json({ success: false, error: "Tipo de comida no soportado para cambiar de opción" });
     }
