@@ -75,6 +75,7 @@ const ComidaDiariaSchema = new mongoose.Schema({
       proteina: {
         tipo: String, // "carne", "huevo", "pescado"
         cantidad: String,
+        eleccion: String, // "vaca", "pollo", "cerdo", "pescado", "huevo"
       },
       verdura: String,
       adicional: String,
@@ -125,6 +126,7 @@ const ComidaDiariaSchema = new mongoose.Schema({
       proteina: {
         tipo: String,
         cantidad: String,
+        eleccion: String,
       },
       verdura: String,
       adicional: String,

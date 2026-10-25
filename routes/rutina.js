@@ -3,122 +3,44 @@ import { ComidaDiaria } from "../models/ComidaDiaria.js";
 import { ProgresoDiario } from "../models/ProgresoDiario.js";
 import { Rutina } from "../models/Rutina.js";
 import { Receta } from "../models/Receta.js";
+import {
+  horarios,
+  opcionesDesayuno,
+  opcionesMerienda,
+  notasDesayuno,
+  notasMerienda,
+  colacion1Opciones,
+  colacion2Opciones,
+  notaColaciones,
+  distribucionSemanal,
+  DIAS_ORDENADOS,
+  proteinas,
+  ELECCIONES_VALIDAS,
+  MAX_VACA_SEMANAL,
+  extrasEntrenamiento,
+  caldoOpcional,
+  construirGuia,
+} from "../data/planAlimentario.js";
 
 const router = express.Router();
 
-// Mapeos de las opciones según el plan de alimentación
-const opcionesDesayuno = {
-  1: {
-    titulo: "Yogur con semillas y frutas secas",
-    descripcion: "Yogur descremado + 14 almendras o 7 nueces + 1 cda semillas",
-    calorias: 200,
-  },
-  2: {
-    titulo: "Leche/yogur con mix de frutas",
-    descripcion: "Leche/yogur + 1 fruta fresca + 14 almendras o 7 nueces",
-    calorias: 220,
-  },
-  3: {
-    titulo: "Infusión con omelet",
-    descripcion: "Infusión o café o mate + Omelet (1 huevo + queso port salut)",
-    calorias: 180,
-  },
-  4: {
-    titulo: "Yogur con omelet (dulce)",
-    descripcion: "Yogur + Omelet (1 huevo + salvado + ½ banana)",
-    calorias: 210,
-  },
-  5: {
-    titulo: "Infusión con pan nube",
-    descripcion: "Café/mate/té + Pan nube + queso/mermelada/jamón",
-    calorias: 190,
-  },
-  6: {
-    titulo: "Opción Libre",
-    descripcion: "Consúltalo con tu nutricionista",
-    calorias: 200,
-  },
-};
-
-const opcionesMerienda = {
-  1: {
-    titulo: "Yogur con cereales y frutas secas",
-    descripcion: "Yogur + ¾ taza copos de maíz + 12 almendras o 7 nueces",
-    calorias: 220,
-  },
-  2: {
-    titulo: "Yogur con pan integral",
-    descripcion: "Yogur descremado + 2 rodajas pan integral + queso opcional",
-    calorias: 200,
-  },
-  3: {
-    titulo: "Infusión con budín integral",
-    descripcion: "Café/mate/té cortado con leche + 1-2 rebanada budín",
-    calorias: 240,
-  },
-  4: {
-    titulo: "Infusión con tostadas untadas",
-    descripcion: "Café/mate/té + 2 tostadas + queso descremado/mermelada light",
-    calorias: 210,
-  },
-  5: {
-    titulo: "Infusión con pan nube",
-    descripcion: "Café/mate/té + ¾ taza leche + pan nube untado",
-    calorias: 220,
-  },
-};
-
-const colacion1Opciones = {
-  1: "Café, té o mate (amargo o endulzado)",
-  2: "Frutas secas (hasta 10 unidades)",
-  3: "Palta (½ unidad)",
-  4: "Gelatina light",
-  5: "Caldos (caseros o comerciales)",
-  6: "Huevo (1 unidad) en omelet o hervido",
-  7: "Rollito de lomito y queso (1 feta de cada uno)",
-  8: "Aceitunas (3 unidades)",
-  9: "Bastoncitos de pechuga de pollo",
-};
-
-const colacion2Opciones = {
-  1: "Fruta fresca (2-3/día)",
-  2: "Yogur (1 vaso o pote)",
-  3: "Leche para 'cortar' infusiones",
-  4: "Bastoncitos de zanahoria",
-  5: "Pickles (3 unidades)",
-  6: "Berenjena en vinagre (2 rodajas)",
-  7: "Morrón en vinagre (1/2 unidad)",
-  8: "Pochoclos (1/2 taza)",
-  9: "Almohaditas (1/2 taza)",
-};
-
-const opcionesDesayunoLista = Object.entries(opcionesDesayuno).map(
-  ([numero, opcion]) => ({
+// Mapeos de las opciones según el plan de alimentación (ver data/planAlimentario.js)
+const toLista = (obj) =>
+  Object.entries(obj).map(([numero, opcion]) => ({
     numero: Number(numero),
-    ...opcion,
-  })
-);
+    ...(typeof opcion === "string" ? { descripcion: opcion } : opcion),
+  }));
 
-const opcionesMeriendaLista = Object.entries(opcionesMerienda).map(
-  ([numero, opcion]) => ({
-    numero: Number(numero),
-    ...opcion,
-  })
-);
-
-const colacion1OpcionesLista = Object.entries(colacion1Opciones).map(
-  ([numero, descripcion]) => ({
-    numero: Number(numero),
-    descripcion,
-  })
-);
-
-const colacion2OpcionesLista = Object.entries(colacion2Opciones).map(
-  ([numero, descripcion]) => ({
-    numero: Number(numero),
-    descripcion,
-  })
-);
+const opcionesDesayunoLista = toLista(opcionesDesayuno).map((o) => ({
+  ...o,
+  notas: [...(o.notas || []), ...notasDesayuno],
+}));
+const opcionesMeriendaLista = toLista(opcionesMerienda).map((o) => ({
+  ...o,
+  notas: [...(o.notas || []), ...notasMerienda],
+}));
+const colacion1OpcionesLista = toLista(colacion1Opciones);
+const colacion2OpcionesLista = toLista(colacion2Opciones);
 
 const opcionesRutina = {
   desayuno: opcionesDesayunoLista,
@@ -127,50 +49,44 @@ const opcionesRutina = {
   colacion2: colacion2OpcionesLista,
 };
 
-// Distribución de almuerzo/cena según día de la semana
-const distribucionSemanal = {
-  lunes: { almuerzo: "amarillo", cena: "rojo" },
-  martes: { almuerzo: "rojo", cena: "amarillo" },
-  miercoles: { almuerzo: "amarillo", cena: "rojo" },
-  jueves: { almuerzo: "rojo", cena: "amarillo" },
-  viernes: { almuerzo: "amarillo", cena: "rojo" },
-  sabado: { almuerzo: "mixto", cena: "rojo" }, // mixto = puede ser rojo o amarillo
-  domingo: { almuerzo: "rojo", cena: "rojo" },
+const formatearExtras = (extras) => {
+  if (!extras) return undefined;
+  const partes = [
+    `${extras.titulo}: ${extras.opciones.join(", ")}.`,
+    extras.opcional,
+  ];
+  if (extras.milanesas) partes.push(extras.milanesas);
+  return partes.filter(Boolean).join(" ");
+};
+
+// Extras estructurados (según horario de entrenamiento) para almuerzo / cena
+const obtenerExtrasEntrenamiento = (diaSemana, horaEntrenamiento, tipoComida) => {
+  const aplica =
+    (tipoComida === "almuerzo" && horaEntrenamiento === "antes17") ||
+    (tipoComida === "cena" && horaEntrenamiento === "despues18");
+  if (!aplica) return null;
+
+  const dist = (distribucionSemanal[diaSemana] || {})[tipoComida];
+  const base = extrasEntrenamiento[tipoComida];
+  const esCarne = dist === "rojo" || dist === "mixto";
+  const quien = dist === "mixto" ? "la CARNE o el HUEVO" : esCarne ? "la CARNE" : "el HUEVO";
+
+  return {
+    titulo: base.titulo,
+    opciones: base.opciones,
+    opcional: `Opcional: el día que sumás estos alimentos podés NO consumir ${quien}.`,
+    milanesas: esCarne ? extrasEntrenamiento.milanesas : null,
+  };
 };
 
 const obtenerCarbsEntrenamiento = (diaSemana, horaEntrenamiento, tipoComida) => {
   if (horaEntrenamiento === "ninguno") return undefined;
-
-  const distribucion = distribucionSemanal[diaSemana] || {};
-  const tipoProteina = distribucion[tipoComida];
-  const esCarne = tipoProteina === "rojo" || tipoProteina === "mixto";
-
-  if (tipoComida === "almuerzo" && horaEntrenamiento === "antes17") {
-    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral/choclo, 1 porción tarta (pollo y espinaca), 1 cuadradito pastel de papas, 1 hamburguesa vegana, 1 papa o 1 batata.";
-    if (esCarne) {
-      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir carne hoy.";
-    } else {
-      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir huevo hoy.";
-    }
-    return base;
-  }
-
-  if (tipoComida === "cena" && horaEntrenamiento === "despues18") {
-    let base = "Extra por entrenamiento: 1/2 taza legumbres/arroz integral/choclo, 1 porción tarta (pollo y espinaca), 1 cuadradito pastel de papas, 1 hamburguesa vegana, 1 papa o 1 batata.";
-    if (esCarne) {
-      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir carne hoy.";
-    } else {
-      base += " Opcional: Pastas o milanesas de soja (reemplaza carbohidratos extras). Podes NO consumir huevo hoy.";
-    }
-    return base;
-  }
-
-  return undefined;
+  return formatearExtras(obtenerExtrasEntrenamiento(diaSemana, horaEntrenamiento, tipoComida));
 };
 
 const obtenerProteinaPorDefecto = (tipoDist) => {
   if (tipoDist === "amarillo") {
-    return { tipo: "huevo", cantidad: "Hasta 3 claras y 1 yema" };
+    return { tipo: "huevo", cantidad: "Hasta 3 claras (solo 1 yema por día)", eleccion: "huevo" };
   } else if (tipoDist === "rojo") {
     return { tipo: "carne", cantidad: "160-180gr" };
   } else if (tipoDist === "mixto") {
@@ -178,6 +94,17 @@ const obtenerProteinaPorDefecto = (tipoDist) => {
   }
   return { tipo: "carne", cantidad: "160-180gr" };
 };
+
+// Datos del plan que acompañan a las respuestas de rutina diaria
+const datosPlanDelDia = (comidaDiaria) => ({
+  horarios,
+  extras: {
+    almuerzo: obtenerExtrasEntrenamiento(comidaDiaria.diaSemana, comidaDiaria.horaEntrenamiento, "almuerzo"),
+    cena: obtenerExtrasEntrenamiento(comidaDiaria.diaSemana, comidaDiaria.horaEntrenamiento, "cena"),
+  },
+  caldoOpcional,
+  notaColaciones,
+});
 
 const calcularProgreso = (comidaDiaria) => {
   let totalComidas = 0;
@@ -395,6 +322,119 @@ router.get("/historial/:usuarioId", async (req, res) => {
   }
 });
 
+// GET: Guía completa del plan de alimentación (consejos, horarios, reglas, recetas)
+router.get("/plan", (_req, res) => {
+  res.json({ success: true, data: construirGuia() });
+});
+
+// GET: Obtener progreso del día (debe declararse antes de "/:usuarioId/:fecha")
+
+router.get("/progreso/:usuarioId/:fecha", async (req, res) => {
+  try {
+    const { usuarioId, fecha } = req.params;
+
+    const progreso = await ProgresoDiario.findOne({
+      usuarioId,
+      fecha: {
+        $gte: new Date(fecha),
+        $lt: new Date(new Date(fecha).getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (!progreso) {
+      return res.json({
+        success: true,
+        data: {
+          totalComidas: 0,
+          comidasConsumidas: 0,
+          porcentajeComplecion: 0,
+        },
+      });
+    }
+
+    res.json({ success: true, data: progreso });
+  } catch (error) {
+    console.error("Error al obtener progreso:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error al obtener el progreso",
+    });
+  }
+});
+
+// Devuelve el lunes (UTC) de la semana de una fecha
+const inicioDeSemana = (fecha) => {
+  const f = new Date(fecha);
+  const base = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()));
+  const diff = (base.getUTCDay() + 6) % 7; // lunes = 0
+  return new Date(base.getTime() - diff * 24 * 60 * 60 * 1000);
+};
+
+const eleccionDe = (comida) => comida?.grupoAlimentos?.proteina?.eleccion || null;
+
+// Cuenta las comidas con carne vacuna elegidas en la semana (opcionalmente excluyendo una comida)
+const contarVacaSemana = async (usuarioId, fecha, excluir = null) => {
+  const lunes = inicioDeSemana(fecha);
+  const dias = await ComidaDiaria.find({
+    usuarioId,
+    fecha: { $gte: lunes, $lt: new Date(lunes.getTime() + 7 * 24 * 60 * 60 * 1000) },
+  });
+  let total = 0;
+  for (const d of dias) {
+    for (const tipo of ["almuerzo", "cena"]) {
+      if (excluir && String(d._id) === String(excluir.id) && tipo === excluir.tipoComida) continue;
+      if (eleccionDe(d[tipo]) === "vaca") total++;
+    }
+  }
+  return total;
+};
+
+// GET: Resumen de la semana (distribución almuerzo/cena + control de carne vacuna)
+router.get("/semana/:usuarioId/:fecha", async (req, res) => {
+  try {
+    const { usuarioId, fecha } = req.params;
+    const lunes = inicioDeSemana(fecha);
+    const registros = await ComidaDiaria.find({
+      usuarioId,
+      fecha: { $gte: lunes, $lt: new Date(lunes.getTime() + 7 * 24 * 60 * 60 * 1000) },
+    });
+
+    let vacaUsada = 0;
+    const dias = DIAS_ORDENADOS.map((dia, i) => {
+      const fechaDia = new Date(lunes.getTime() + i * 24 * 60 * 60 * 1000);
+      const registro = registros.find((r) => r.diaSemana === dia);
+      const almuerzoEleccion = eleccionDe(registro?.almuerzo);
+      const cenaEleccion = eleccionDe(registro?.cena);
+      if (almuerzoEleccion === "vaca") vacaUsada++;
+      if (cenaEleccion === "vaca") vacaUsada++;
+      const progreso = registro ? calcularProgreso(registro) : null;
+      return {
+        dia,
+        fecha: fechaDia.toISOString().slice(0, 10),
+        distribucion: distribucionSemanal[dia],
+        esEntrenamiento: Boolean(registro?.esEntrenamiento),
+        registrado: Boolean(registro),
+        porcentaje: progreso ? Math.round(progreso.porcentajeComplecion) : 0,
+        almuerzoEleccion,
+        cenaEleccion,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        desde: lunes.toISOString().slice(0, 10),
+        dias,
+        vaca: { usada: vacaUsada, maxima: MAX_VACA_SEMANAL },
+      },
+    });
+  } catch (error) {
+    console.error("Error al obtener resumen semanal:", error);
+    res.status(500).json({ success: false, error: "Error al obtener el resumen semanal" });
+  }
+});
+
+
 // GET: Obtener la rutina de comidas para un día específico
 router.get("/:usuarioId/:fecha", async (req, res) => {
   try {
@@ -561,6 +601,7 @@ router.get("/:usuarioId/:fecha", async (req, res) => {
       success: true,
       data: comidaDiaria,
       opciones: opcionesRutina,
+      plan: datosPlanDelDia(comidaDiaria),
       colacionesOpcionales: {
         colacion1: true,
         colacion2: true,
@@ -704,6 +745,7 @@ router.post("/", async (req, res) => {
       message: "Rutina actualizada correctamente",
       data: comidaDiaria,
       opciones: opcionesRutina,
+      plan: datosPlanDelDia(comidaDiaria),
       colacionesOpcionales: {
         colacion1: true,
         colacion2: true,
@@ -724,8 +766,13 @@ router.patch("/:id/marcar-comida", async (req, res) => {
     const { id } = req.params;
     const { tipoComida, consumido } = req.body;
 
+    const tiposValidos = ["desayuno", "colacion1", "almuerzo", "merienda", "colacion2", "cena", "entrenamiento"];
+    if (!tiposValidos.includes(tipoComida)) {
+      return res.status(400).json({ success: false, error: "Tipo de comida no válido" });
+    }
+
     const actualizacion = {
-      [`${tipoComida}.consumido`]: consumido,
+      [`${tipoComida}.consumido`]: Boolean(consumido),
       updatedAt: new Date(),
     };
 
@@ -779,39 +826,6 @@ router.patch("/:id/marcar-comida", async (req, res) => {
   }
 });
 
-// GET: Obtener progreso del día
-router.get("/progreso/:usuarioId/:fecha", async (req, res) => {
-  try {
-    const { usuarioId, fecha } = req.params;
-
-    const progreso = await ProgresoDiario.findOne({
-      usuarioId,
-      fecha: {
-        $gte: new Date(fecha),
-        $lt: new Date(new Date(fecha).getTime() + 24 * 60 * 60 * 1000),
-      },
-    });
-
-    if (!progreso) {
-      return res.json({
-        success: true,
-        data: {
-          totalComidas: 0,
-          comidasConsumidas: 0,
-          porcentajeComplecion: 0,
-        },
-      });
-    }
-
-    res.json({ success: true, data: progreso });
-  } catch (error) {
-    console.error("Error al obtener progreso:", error);
-    res.status(500).json({
-      success: false,
-      error: "Error al obtener el progreso",
-    });
-  }
-});
 
 
 
@@ -956,5 +970,89 @@ router.patch("/:id/vincular-receta", async (req, res) => {
     res.status(500).json({ success: false, error: "Error al vincular la receta" });
   }
 });
+
+// PATCH: Elegir el tipo de proteína de almuerzo/cena respetando las reglas del plan
+router.patch("/:id/elegir-proteina", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipoComida, eleccion } = req.body;
+
+    if (!["almuerzo", "cena"].includes(tipoComida)) {
+      return res.status(400).json({ success: false, error: "Solo se puede elegir proteína en almuerzo o cena" });
+    }
+    if (eleccion && !ELECCIONES_VALIDAS.includes(eleccion)) {
+      return res.status(400).json({ success: false, error: "Proteína no válida" });
+    }
+
+    const actual = await ComidaDiaria.findById(id);
+    if (!actual) {
+      return res.status(404).json({ success: false, error: "Rutina no encontrada" });
+    }
+
+    if (eleccion) {
+      const dist = distribucionSemanal[actual.diaSemana]?.[tipoComida];
+      if (dist === "amarillo" && eleccion !== "huevo") {
+        return res.status(400).json({ success: false, error: "Esta comida corresponde a huevo (amarillo) según tu plan" });
+      }
+      if (dist === "rojo" && eleccion === "huevo") {
+        return res.status(400).json({ success: false, error: "Esta comida corresponde a carne (rojo) según tu plan" });
+      }
+      if (eleccion === "vaca") {
+        if (tipoComida === "cena") {
+          return res.status(400).json({ success: false, error: "La carne vacuna no está permitida en la cena" });
+        }
+        const usadas = await contarVacaSemana(actual.usuarioId, actual.fecha, { id, tipoComida });
+        if (usadas >= MAX_VACA_SEMANAL) {
+          return res.status(400).json({
+            success: false,
+            error: `Ya usaste las ${MAX_VACA_SEMANAL} comidas de carne vacuna de esta semana`,
+          });
+        }
+      }
+    }
+
+    const actualizacion = {
+      [`${tipoComida}.grupoAlimentos.proteina.eleccion`]: eleccion || null,
+      updatedAt: new Date(),
+    };
+    if (!actual[tipoComida]?.recetaNombre) {
+      const etiqueta = eleccion ? proteinas[eleccion].label : null;
+      if (etiqueta) {
+        actualizacion[`${tipoComida}.descripcion`] = `${etiqueta} + verdura`;
+      }
+    }
+
+    const comidaDiaria = await ComidaDiaria.findByIdAndUpdate(id, actualizacion, { new: true });
+    res.json({
+      success: true,
+      message: eleccion ? `Proteína elegida: ${proteinas[eleccion].label}` : "Proteína desmarcada",
+      data: comidaDiaria,
+    });
+  } catch (error) {
+    console.error("Error al elegir proteína:", error);
+    res.status(500).json({ success: false, error: "Error al elegir la proteína" });
+  }
+});
+
+// PATCH: Guardar las notas del día (diario alimentario / registro del ejercicio)
+router.patch("/:id/notas", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const notas = typeof req.body.notas === "string" ? req.body.notas.slice(0, 2000) : "";
+    const comidaDiaria = await ComidaDiaria.findByIdAndUpdate(
+      id,
+      { notasUsuario: notas, updatedAt: new Date() },
+      { new: true }
+    );
+    if (!comidaDiaria) {
+      return res.status(404).json({ success: false, error: "Rutina no encontrada" });
+    }
+    res.json({ success: true, message: "Notas guardadas", data: comidaDiaria });
+  } catch (error) {
+    console.error("Error al guardar notas:", error);
+    res.status(500).json({ success: false, error: "Error al guardar las notas" });
+  }
+});
+
 
 export default router;
