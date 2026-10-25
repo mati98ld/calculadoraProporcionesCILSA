@@ -21,11 +21,21 @@
               <strong>Objetivo principal:</strong> {{ form.objetivo }}
             </div>
           </div>
+          <div class="col-auto">
+            <q-btn
+              unelevated
+              no-caps
+              color="purple"
+              icon="menu_book"
+              label="Mi plan"
+              to="/mi-plan"
+            />
+          </div>
         </div>
       </div>
 
       <div class="row q-col-gutter-md">
-        <!-- Barra lateral izquierda (Progreso, Estado del día, Historial) -->
+        <!-- Barra lateral izquierda (Progreso, Semana, Historial) -->
         <div class="col-12 col-lg-4">
           <ProgresoDiarioCard
             :progreso="progreso"
@@ -34,6 +44,12 @@
             :historial="historial"
             :history-loading="historyLoading"
             @refresh-history="cargarHistorial"
+          />
+          <SemanaCard
+            :semana="semana"
+            :loading="loadingSemana"
+            :hoy="getTodayISO()"
+            @refresh="cargarSemana"
           />
         </div>
 
@@ -73,22 +89,74 @@
                 No hay rutina cargada para hoy.
               </div>
 
-              <div v-else class="row q-col-gutter-md">
-                <div
-                  v-for="meal in meals"
-                  :key="meal.key"
-                  class="col-12 col-md-6"
+              <div v-else>
+                <q-banner
+                  v-if="mealAhora"
+                  rounded
+                  class="bg-deep-purple-1 text-deep-purple-9 q-mb-md"
                 >
-                  <MealCard
-                    :meal="meal"
-                    :opciones-comidas="opcionesComidas"
-                    :recetas="recetas"
-                    :selected-option="selectedOptionModel[meal.key]"
-                    @marcar="(val) => marcarComida(meal.key, val)"
-                    @cambiar-opcion="(val) => cambiarOpcionComida(meal.key, val)"
-                    @vincular-receta="(val) => vincularRecetaAMeal(meal.key, val)"
-                  />
+                  <template v-slot:avatar>
+                    <q-icon name="schedule" color="deep-purple-5" />
+                  </template>
+                  Ahora te toca <strong>{{ mealAhora.label }}</strong>
+                  <span v-if="mealAhora.horario">({{ mealAhora.horario }})</span>.
+                </q-banner>
+
+                <div class="row q-col-gutter-md">
+                  <div
+                    v-for="meal in meals"
+                    :key="meal.key"
+                    class="col-12 col-md-6"
+                  >
+                    <MealCard
+                      :meal="meal"
+                      :opciones-comidas="opcionesComidas"
+                      :recetas="recetas"
+                      :selected-option="meal.opcion"
+                      @marcar="(val) => marcarComida(meal.key, val)"
+                      @cambiar-opcion="(val) => cambiarOpcionComida(meal.key, val)"
+                      @vincular-receta="(val) => vincularRecetaAMeal(meal.key, val)"
+                      @elegir-proteina="(val) => elegirProteina(meal.key, val)"
+                    />
+                  </div>
                 </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Diario del día -->
+          <q-card v-if="rutina" class="shadow-3 q-mt-md diario-card">
+            <q-card-section>
+              <div class="row items-center justify-between q-mb-sm">
+                <div>
+                  <div class="text-subtitle1 text-purple text-bold">
+                    <q-icon name="edit_note" /> Mi diario de hoy
+                  </div>
+                  <div class="text-caption text-grey-7">
+                    Registrá por escrito qué comiste, el horario y el ejercicio que hiciste.
+                  </div>
+                </div>
+              </div>
+              <q-input
+                v-model="notas"
+                type="textarea"
+                outlined
+                autogrow
+                counter
+                maxlength="2000"
+                placeholder="Ej: Desayuno 7:45 – yogur con almendras. Gimnasio 18:30, 1 h de pesas."
+              />
+              <div class="row justify-end q-mt-sm">
+                <q-btn
+                  unelevated
+                  no-caps
+                  color="purple"
+                  icon="save"
+                  label="Guardar notas"
+                  :disable="notas === (rutina.notasUsuario || '')"
+                  :loading="guardandoNotas"
+                  @click="guardarNotas"
+                />
               </div>
             </q-card-section>
           </q-card>
@@ -137,7 +205,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useQuasar } from "quasar";
 import { RUTINA_API_URL } from "src/config/api";
 
@@ -145,6 +213,7 @@ import { RUTINA_API_URL } from "src/config/api";
 import PerfilSelector from "src/components/PerfilSelector.vue";
 import PerfilDialog from "src/components/PerfilDialog.vue";
 import ProgresoDiarioCard from "src/components/ProgresoDiarioCard.vue";
+import SemanaCard from "src/components/SemanaCard.vue";
 import MealCard from "src/components/MealCard.vue";
 
 const $q = useQuasar();
@@ -162,6 +231,16 @@ const loadingRutina = ref(false);
 const errorRutina = ref("");
 const historial = ref([]);
 const historyLoading = ref(false);
+
+// Resumen semanal y datos del plan del día (provienen del backend)
+const semana = ref(null);
+const loadingSemana = ref(false);
+const distribucionHoy = ref(null);
+const planHoy = ref(null);
+
+// Diario del día
+const notas = ref("");
+const guardandoNotas = ref(false);
 
 const progreso = ref({
   totalComidas: 0,
@@ -189,20 +268,8 @@ const perfilParaDialog = ref({
 
 // Opciones de comidas
 const opcionesComidas = ref(null);
-const selectedOptionModel = ref({
-  desayuno: 1,
-  merienda: 1,
-});
 
 const recetas = ref([]);
-const selectedRecipeModel = ref({
-  desayuno: null,
-  colacion1: null,
-  almuerzo: null,
-  merienda: null,
-  colacion2: null,
-  cena: null,
-});
 
 const todayLabel = new Date().toLocaleDateString("es-ES", {
   weekday: "long",
@@ -211,6 +278,26 @@ const todayLabel = new Date().toLocaleDateString("es-ES", {
   year: "numeric",
 });
 
+// Horarios por defecto del Diario Alimentario Ideal (se pisan con los del backend)
+const HORARIOS_DEFAULT = {
+  desayuno: { desde: "07:00", hasta: "08:00", label: "7 hs – 8 hs" },
+  colacion1: { desde: "09:00", hasta: "10:00", label: "9 hs – 10 hs" },
+  almuerzo: { desde: "12:00", hasta: "13:00", label: "12 hs – 13 hs" },
+  merienda: { desde: "15:00", hasta: "16:00", label: "15 hs – 16 hs" },
+  colacion2: { desde: "19:00", hasta: "19:00", label: "19 hs" },
+  cena: { desde: "20:00", hasta: "21:00", label: "20 hs – 21 hs" },
+};
+const MAX_VACA_DEFAULT = 3;
+const OPCIONES_CARNE = [
+  { value: "vaca", label: "Vaca" },
+  { value: "pollo", label: "Pollo" },
+  { value: "cerdo", label: "Cerdo" },
+  { value: "pescado", label: "Pescado" },
+];
+
+const horarios = computed(() => planHoy.value?.horarios || HORARIOS_DEFAULT);
+
+// Orden cronológico del Diario Alimentario (el gimnasio va entre merienda y colación 2)
 const mealMeta = {
   desayuno: { label: "Desayuno", helper: "Primera comida del día" },
   colacion1: { label: "Colación 1", helper: "Opcional" },
@@ -220,39 +307,31 @@ const mealMeta = {
   cena: { label: "Cena", helper: "Última comida del día" },
 };
 
-// Computed properties
-const meals = computed(() => {
-  const source = rutina.value || {};
-  const list = Object.keys(mealMeta).map((key) => {
-    const meal = source[key] || {};
+// Reloj reactivo para destacar la comida que toca
+const ahora = ref(new Date());
+let relojId = null;
 
-    return {
-      key,
-      label: mealMeta[key].label,
-      helper: mealMeta[key].helper,
-      descripcion:
-        meal.descripcion || meal.grupoAlimentos?.proteina?.tipo || "",
-      items: buildMealItems(key, meal),
-      consumido: Boolean(meal.consumido),
-      recetaNombre: meal.recetaNombre || null,
-      recetaId: meal.recetaId || null,
-      adicional: meal.grupoAlimentos?.adicional || null,
-    };
-  });
+const aMinutos = (hhmm) => {
+  const [h, m] = (hhmm || "0:0").split(":").map(Number);
+  return h * 60 + m;
+};
 
-  // Si hoy es día de gimnasio, agregar tarjeta de entrenamiento
-  if (source.entrenamiento?.requerido) {
-    list.push({
-      key: "entrenamiento",
-      label: "Gimnasio",
-      helper: "Actividad física del día",
-      descripcion: source.entrenamiento.descripcion || "Ir al gimnasio",
-      items: [],
-      consumido: Boolean(source.entrenamiento.consumido),
-    });
+const comidaQueToca = computed(() => {
+  const nowMin = ahora.value.getHours() * 60 + ahora.value.getMinutes();
+  const principales = ["desayuno", "almuerzo", "merienda", "cena"];
+  for (const key of principales) {
+    const h = horarios.value[key];
+    if (!h) continue;
+    // Ventana: desde 1 h antes del inicio hasta 30 min después del final de la franja
+    if (
+      nowMin >= aMinutos(h.desde) - 60 &&
+      nowMin <= aMinutos(h.hasta) + 30 &&
+      !rutina.value?.[key]?.consumido
+    ) {
+      return key;
+    }
   }
-
-  return list;
+  return null;
 });
 
 const getTodayISO = () => {
@@ -263,31 +342,123 @@ const getTodayISO = () => {
   return `${year}-${month}-${day}`;
 };
 
+const colorDeComida = (key, proteinaTipo) => {
+  const dist = distribucionHoy.value?.[key];
+  if (dist) return dist;
+  if (proteinaTipo === "huevo") return "amarillo";
+  if (proteinaTipo === "mixto") return "mixto";
+  return "rojo";
+};
+
+const construirProteina = (key, meal) => {
+  const prot = meal.grupoAlimentos?.proteina;
+  if (!prot) return null;
+
+  const color = colorDeComida(key, prot.tipo);
+  const eleccion = prot.eleccion || null;
+  const maxVaca = semana.value?.vaca?.maxima ?? MAX_VACA_DEFAULT;
+  const usadas = semana.value?.vaca?.usada ?? 0;
+
+  let opciones = [];
+  if (color === "rojo") opciones = [...OPCIONES_CARNE];
+  if (color === "mixto") opciones = [...OPCIONES_CARNE, { value: "huevo", label: "Huevo" }];
+
+  opciones = opciones.map((op) => {
+    if (op.value !== "vaca") return { ...op, bloqueada: false };
+    if (key === "cena") {
+      return { ...op, bloqueada: true, motivo: "La carne vacuna no va en la cena" };
+    }
+    if (eleccion !== "vaca" && usadas >= maxVaca) {
+      return {
+        ...op,
+        bloqueada: true,
+        motivo: `Ya usaste las ${maxVaca} comidas de vaca de esta semana`,
+      };
+    }
+    return { ...op, bloqueada: false };
+  });
+
+  const tieneVaca = opciones.some((o) => o.value === "vaca");
+  const avisoVaca = tieneVaca
+    ? key === "cena"
+      ? "Plan: la carne vacuna no se consume en la cena."
+      : `Carne vacuna esta semana: ${usadas}/${maxVaca}.`
+    : "";
+
+  return {
+    color,
+    cantidad: prot.cantidad || "",
+    eleccion,
+    opciones,
+    avisoVaca,
+  };
+};
+
+const horarioGimnasio = (hora) => {
+  if (hora === "antes17") return "Antes de las 17 hs";
+  if (hora === "despues18") return "Después de las 18 hs";
+  return "";
+};
+
+// Computed properties
+const meals = computed(() => {
+  const source = rutina.value || {};
+  const list = Object.keys(mealMeta).map((key) => {
+    const meal = source[key] || {};
+    const esPrincipal = key === "almuerzo" || key === "cena";
+
+    return {
+      key,
+      label: mealMeta[key].label,
+      helper: mealMeta[key].helper,
+      horario: horarios.value[key]?.label || "",
+      esAhora: comidaQueToca.value === key,
+      opcion: meal.opcion || 1,
+      descripcion:
+        meal.descripcion || meal.grupoAlimentos?.proteina?.tipo || "",
+      items: buildMealItems(key, meal),
+      consumido: Boolean(meal.consumido),
+      recetaNombre: meal.recetaNombre || null,
+      recetaId: meal.recetaId || null,
+      adicional: meal.grupoAlimentos?.adicional || null,
+      extras: esPrincipal ? planHoy.value?.extras?.[key] || null : null,
+      proteina: esPrincipal ? construirProteina(key, meal) : null,
+      verdura: esPrincipal ? meal.grupoAlimentos?.verdura || "" : "",
+      caldo: esPrincipal && planHoy.value?.caldoOpcional ? planHoy.value.caldoOpcional : "",
+    };
+  });
+
+  // Si hoy es día de gimnasio, agregar tarjeta de entrenamiento después de la merienda
+  if (source.entrenamiento?.requerido) {
+    const idxMerienda = list.findIndex((m) => m.key === "merienda");
+    list.splice(idxMerienda + 1, 0, {
+      key: "entrenamiento",
+      label: "Gimnasio",
+      helper: "Actividad física del día",
+      horario: horarioGimnasio(source.horaEntrenamiento) || "17 hs",
+      descripcion: source.entrenamiento.descripcion || "Ir al gimnasio",
+      items: [],
+      consumido: Boolean(source.entrenamiento.consumido),
+    });
+  }
+
+  return list;
+});
+
+const mealAhora = computed(() => meals.value.find((m) => m.esAhora) || null);
+
 const buildMealItems = (key, meal) => {
   if (meal.recetaNombre) {
     return [];
   }
 
+  // Almuerzo y cena muestran sus grupos de alimentos con chips de colores
   if (meal.grupoAlimentos) {
-    const items = [];
-    if (
-      meal.grupoAlimentos.proteina?.cantidad ||
-      meal.grupoAlimentos.proteina?.tipo
-    ) {
-      let pText = `${meal.grupoAlimentos.proteina?.cantidad || ""} ${
-        meal.grupoAlimentos.proteina?.tipo || ""
-      }`.trim();
-      if (meal.grupoAlimentos.proteina?.tipo === "carne") {
-        pText += " (Vaca, Pollo, Cerdo o Pescado)";
-      }
-      items.push(pText);
-    }
-    if (meal.grupoAlimentos.verdura) items.push(meal.grupoAlimentos.verdura);
-    return items.filter(Boolean);
+    return [];
   }
 
   if (key === "colacion1" || key === "colacion2") {
-    return meal.opcional ? ["Opcional"] : [];
+    return meal.opcional ? ["Opcional: comé algo solo si tenés hambre"] : [];
   }
 
   return [];
@@ -323,7 +494,7 @@ const recalcularProgreso = (data) => {
   sumarSiCorresponde(Boolean(data.merienda?.opcion), data.merienda?.consumido);
   sumarSiCorresponde(Boolean(data.almuerzo?.grupoAlimentos), data.almuerzo?.consumido);
   sumarSiCorresponde(Boolean(data.cena?.grupoAlimentos), data.cena?.consumido);
-  
+
   // Colaciones son opcionales y no se cuentan
   sumarSiCorresponde(data.colacion1?.opcional === false, data.colacion1?.consumido);
   sumarSiCorresponde(data.colacion2?.opcional === false, data.colacion2?.consumido);
@@ -383,6 +554,10 @@ const cerrarSesionPerfil = () => {
   nombreActivo.value = "";
   rutina.value = null;
   historial.value = [];
+  semana.value = null;
+  planHoy.value = null;
+  distribucionHoy.value = null;
+  notas.value = "";
   form.value.nombre = "";
   form.value.objetivo = "";
   form.value.diasEntrenamiento = [];
@@ -431,7 +606,7 @@ const guardarPerfilGeneral = async (formData) => {
     }
 
     $q.notify({ type: "positive", message: "Perfil guardado correctamente" });
-    
+
     // Actualizar estados locales del perfil activo
     form.value.nombre = nombre;
     form.value.objetivo = formData.objetivo;
@@ -471,24 +646,39 @@ const cargarRutina = async () => {
 
     rutina.value = data.data;
     opcionesComidas.value = data.opciones;
-    selectedOptionModel.value.desayuno = data.data.desayuno?.opcion || 1;
-    selectedOptionModel.value.merienda = data.data.merienda?.opcion || 1;
-
-    // Sincronizar recetas vinculadas
-    selectedRecipeModel.value.desayuno = data.data.desayuno?.recetaNombre || null;
-    selectedRecipeModel.value.colacion1 = data.data.colacion1?.recetaNombre || null;
-    selectedRecipeModel.value.almuerzo = data.data.almuerzo?.recetaNombre || null;
-    selectedRecipeModel.value.merienda = data.data.merienda?.recetaNombre || null;
-    selectedRecipeModel.value.colacion2 = data.data.colacion2?.recetaNombre || null;
-    selectedRecipeModel.value.cena = data.data.cena?.recetaNombre || null;
+    distribucionHoy.value = data.distribucion || null;
+    planHoy.value = data.plan || null;
+    notas.value = data.data.notasUsuario || "";
 
     recalcularProgreso(data.data);
     calcularResumen(data.data);
+
+    // El resumen semanal no bloquea la carga de la rutina
+    cargarSemana();
   } catch (error) {
     rutina.value = null;
     errorRutina.value = error.message || "No se pudo cargar la rutina";
   } finally {
     loadingRutina.value = false;
+  }
+};
+
+const cargarSemana = async () => {
+  const nombre = nombreActivo.value.trim();
+  if (!nombre) return;
+
+  loadingSemana.value = true;
+  try {
+    const response = await fetch(
+      `${RUTINA_API_URL}/rutina/semana/${encodeURIComponent(nombre)}/${getTodayISO()}`
+    );
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error();
+    semana.value = data.data;
+  } catch {
+    semana.value = null;
+  } finally {
+    loadingSemana.value = false;
   }
 };
 
@@ -514,6 +704,7 @@ const marcarComida = async (tipoComida, consumido) => {
     rutina.value = data.data;
     recalcularProgreso(data.data);
     await cargarHistorial();
+    cargarSemana();
 
     $q.notify({
       type: "positive",
@@ -548,7 +739,6 @@ const cambiarOpcionComida = async (tipoComida, opcionNumero) => {
     }
 
     rutina.value = data.data;
-    selectedOptionModel.value[tipoComida] = data.data[tipoComida]?.opcion || opcionNumero;
     recalcularProgreso(data.data);
 
     $q.notify({
@@ -560,7 +750,58 @@ const cambiarOpcionComida = async (tipoComida, opcionNumero) => {
       type: "negative",
       message: error.message || "No se pudo actualizar la opción",
     });
-    selectedOptionModel.value[tipoComida] = rutina.value[tipoComida]?.opcion || 1;
+  }
+};
+
+const elegirProteina = async (tipoComida, eleccion) => {
+  if (!rutina.value?._id) return;
+
+  try {
+    const response = await fetch(
+      `${RUTINA_API_URL}/rutina/${rutina.value._id}/elegir-proteina`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipoComida, eleccion }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "No se pudo elegir la proteína");
+    }
+
+    rutina.value = data.data;
+    cargarSemana();
+
+    $q.notify({ type: "positive", message: data.message || "Proteína actualizada" });
+  } catch (error) {
+    $q.notify({
+      type: "warning",
+      message: error.message || "No se pudo elegir la proteína",
+    });
+  }
+};
+
+const guardarNotas = async () => {
+  if (!rutina.value?._id) return;
+  guardandoNotas.value = true;
+  try {
+    const response = await fetch(`${RUTINA_API_URL}/rutina/${rutina.value._id}/notas`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notas: notas.value }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "No se pudieron guardar las notas");
+    }
+    rutina.value = data.data;
+    $q.notify({ type: "positive", message: "Notas guardadas" });
+  } catch (error) {
+    $q.notify({ type: "negative", message: error.message || "No se pudieron guardar las notas" });
+  } finally {
+    guardandoNotas.value = false;
   }
 };
 
@@ -626,7 +867,6 @@ const vincularRecetaAMeal = async (tipoComida, recetaNombre) => {
     }
 
     rutina.value = data.data;
-    selectedRecipeModel.value[tipoComida] = recetaNombre;
     recalcularProgreso(data.data);
 
     $q.notify({
@@ -640,7 +880,6 @@ const vincularRecetaAMeal = async (tipoComida, recetaNombre) => {
       type: "negative",
       message: error.message || "Error al vincular la receta",
     });
-    selectedRecipeModel.value[tipoComida] = rutina.value[tipoComida]?.recetaNombre || null;
   }
 };
 
@@ -648,6 +887,13 @@ const vincularRecetaAMeal = async (tipoComida, recetaNombre) => {
 onMounted(() => {
   cargarPerfiles();
   cargarRecetas();
+  relojId = setInterval(() => {
+    ahora.value = new Date();
+  }, 60000);
+});
+
+onBeforeUnmount(() => {
+  if (relojId) clearInterval(relojId);
 });
 </script>
 
@@ -672,5 +918,9 @@ export default {
   border-radius: 16px;
   background: linear-gradient(135deg, #fbf7ff 0%, #f0f7ff 100%);
   border: 1px solid rgba(138, 90, 157, 0.15);
+}
+
+.diario-card {
+  border-radius: 16px;
 }
 </style>

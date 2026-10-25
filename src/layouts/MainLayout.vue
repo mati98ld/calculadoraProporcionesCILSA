@@ -101,6 +101,12 @@ const menuList = [
     to: "/mi-rutina",
   },
   {
+    icon: "assignment",
+    label: "Mi plan",
+    separator: true,
+    to: "/mi-plan",
+  },
+  {
     icon: "help",
     iconColor: "primary",
     label: "Ayuda",
